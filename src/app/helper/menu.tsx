@@ -19,7 +19,11 @@ import {
   import { useUser, useClerk } from "@clerk/nextjs"
   import { useRouter } from "next/navigation"
   
-  export function UserDropdown() {
+  interface UserDropdownProps {
+  isCollapsed?: boolean;
+}
+
+export function UserDropdown({ isCollapsed = false }: UserDropdownProps) {
     const { user } = useUser()
     const { signOut } = useClerk()
     const router = useRouter()
@@ -33,22 +37,27 @@ import {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full flex items-center justify-between px-2 py-1 hover:bg-gray-800 rounded-md"
+            className={`flex items-center ${isCollapsed ? 'justify-center p-1' : 'justify-between px-2 py-1 w-full'} hover:bg-gray-800 rounded-md`}
           >
-            <div className="flex items-center gap-2">
-              {/* Avatar */}
+            {!isCollapsed ? (
+              <div className="flex items-center gap-2">
+                {/* Avatar */}
+                <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
+                  <User size={16} />
+                </div>
+                {/* User info */}
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-medium text-white">
+                    {user?.username || user?.fullName || 'User'}
+                  </span>
+                  <span className="text-xs text-gray-400">Free Plan</span>
+                </div>
+              </div>
+            ) : (
               <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
                 <User size={16} />
               </div>
-  
-              {/* User info */}
-              <div className="flex flex-col text-left">
-                <span className="text-sm font-medium text-white">
-                {user?.username || user?.fullName || 'User'}
-                </span>
-                <span className="text-xs text-gray-400">Free Plan</span>
-              </div>
-            </div>
+            )}
           </Button>
         </DropdownMenuTrigger>
   

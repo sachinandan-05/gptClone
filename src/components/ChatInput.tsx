@@ -6,6 +6,7 @@ import { Paperclip, Send, Mic, Plus } from "lucide-react"
 interface ChatInputProps {
   input?: string
   isLoading?: boolean
+  disabled?: boolean
   onInputChange?: (value: string) => void
   onSendMessage?: () => void
   onFileUpload?: (files: FileList | null) => void
@@ -15,6 +16,7 @@ interface ChatInputProps {
 export default function ChatInput({
   input: externalInput,
   isLoading = false,
+  disabled = false,
   onInputChange,
   onSendMessage,
   onFileUpload,
@@ -69,9 +71,10 @@ export default function ChatInput({
       <div className="relative bg-[#303030] rounded-3xl shadow-lg w-[770px] px-3 py-2 flex items-end">
         {/* Plus/Add Button */}
         <button
+          type="button"
           onClick={handleFileClick}
-          disabled={isLoading}
-          className="flex-shrink-0 p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-lg transition-colors"
+          disabled={isLoading || disabled}
+          className="flex-shrink-0 p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-5 h-5" />
         </button>

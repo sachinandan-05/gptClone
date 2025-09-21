@@ -14,6 +14,13 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
     <ReactMarkdown
       components={{
+        // Ensure paragraphs don't wrap around block elements
+        p: ({ node, ...props }) => {
+          const hasBlockElement = node?.children?.some(
+            (child: any) => child.type === 'element' && ['div', 'pre', 'code', 'ul', 'ol', 'table', 'blockquote'].includes(child.tagName)
+          );
+          return hasBlockElement ? <>{props.children}</> : <p {...props} />;
+        },
         code({ node, inline, className, children, ...props }: { node?: any; inline?: boolean; className?: string; children?: React.ReactNode }) {
           const match = /language-(\w+)/.exec(className || '');
           const code = String(children).replace(/\n$/, '');
@@ -27,7 +34,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
           }
 
           return (
-            <div className="my-4 rounded-lg overflow-hidden bg-[#1e1e1e]">
+            <div className="my-4 rounded-lg overflow-hidden bg-[#1e1e1e]" key={Math.random().toString(36).substr(2, 9)}>
               <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] text-gray-300 text-sm">
                 <span>{match?.[1] || 'code'}</span>
                 <button
@@ -57,7 +64,6 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </div>
           );
         },
-        p: ({ node, ...props }) => <p className="mb-4 last:mb-0" {...props} />,
         ul: ({ node, ...props }) => <ul className="list-disc pl-6 mb-4 space-y-1" {...props} />,
         ol: ({ node, ...props }) => <ol className="list-decimal pl-6 mb-4 space-y-1" {...props} />,
         a: ({ node, ...props }) => (

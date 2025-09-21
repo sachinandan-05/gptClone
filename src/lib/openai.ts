@@ -1,12 +1,7 @@
-import { OpenAI } from 'openai';
+import OpenAI from 'openai';
 
-// Create OpenAI client configured for OpenRouter
+// Create standard OpenAI client
 export const openai = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
-  defaultHeaders: {
-    'HTTP-Referer': 'http://localhost:3000', // Your site URL
-    'X-Title': 'ChatGPT ', // Your site name
-  },
-  dangerouslyAllowBrowser: true, // Only if you're using it in the browser
+  apiKey: process.env.OPENAI_API_KEY, // Using standard OpenAI API key
+  dangerouslyAllowBrowser: true // Only if you're using it in the browser
 });

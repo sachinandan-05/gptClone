@@ -2,11 +2,20 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Sidebar as SidebarIcon } from "lucide-react";
+import { Bot, User, Sidebar as SidebarIcon, Dot } from "lucide-react";
 import Navbar from './Navbar';
 import ChatInput from './ChatInput';
 import { Sidebar } from './Sidebar';
 import { MarkdownRenderer } from '../app/helper/MarkdownRenderer';
+
+// Typing indicator component
+const TypingIndicator = () => (
+  <div className="flex space-x-1 p-2">
+    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+  </div>
+);
 
 export interface Message {
   id: string;
@@ -19,14 +28,15 @@ interface ChatUIProps {
   initialMessages?: Message[];
   chatId?: string;
   initialInput?: string;
+  onNewChatCreated?: (chatId: string) => void;
 }
 
-export default function ChatUI({ initialMessages = [], chatId, initialInput = '' }: ChatUIProps) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+export default function ChatUI({ initialMessages = [], chatId, initialInput = '', onNewChatCreated }: ChatUIProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState(initialInput);
   const [isNewChat, setIsNewChat] = useState(!chatId);
-  const [isLoading, setIsLoading] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -39,6 +49,13 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Load initial messages
+  useEffect(() => {
+    if (initialMessages.length > 0) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages]);
+
   // Auto-scroll when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,112 +66,175 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}`,
       content: input,
       role: 'user',
       timestamp: new Date(),
     };
 
-    // Update local state immediately
+    // Update local state immediately with user message
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput("");
+    
+    // Add loading state for the assistant's response
     setIsLoading(true);
+    
+    // Add placeholder for assistant's response
+    const assistantPlaceholder: Message = {
+      id: `assistant-${Date.now()}`,
+      content: '',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+    
+    setMessages(prev => [...prev, assistantPlaceholder]);
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
         },
         body: JSON.stringify({
           messages: updatedMessages,
           chatId: chatId || undefined,
+          stream: true,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send message');
+        const errorData = await response.text();
+        throw new Error(errorData || 'Failed to send message');
       }
 
-      const data = await response.json();
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = '';
+      let chatIdFromResponse: string | null = null;
+
+      try {
+        // Process the stream
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n\n').filter(line => line.trim() !== '');
+
+          for (const line of lines) {
+            if (line === 'data: [DONE]') continue;
+
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                
+                // Handle chat ID if it's a new chat
+                if (data.chatId) {
+                  chatIdFromResponse = data.chatId;
+                  if (isNewChat) {
+                    window.history.replaceState({}, '', `/chat/${data.chatId}`);
+                    setIsNewChat(false);
+                    onNewChatCreated?.(data.chatId);
+                  }
+                  continue;
+                }
+
+                // Handle message chunks
+                if (data.choices?.[0]?.delta?.content) {
+                  const content = data.choices[0].delta.content;
+                  assistantContent += content;
+                  
+                  // Update the assistant's message with the new content
+                  setMessages(prev =>
+                    prev.map(msg =>
+                      msg.id === assistantPlaceholder.id
+                        ? { ...msg, content: assistantContent }
+                        : msg
+                    )
+                  );
+                }
+              } catch (e) {
+                console.error('Error parsing SSE data:', e);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      // Final update to the assistant's message with the complete content
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === assistantPlaceholder.id
+            ? {
+                ...msg,
+                id: `msg-${Date.now()}`,
+                content: assistantContent,
+              }
+            : msg
+        )
+      );
       
-      // If this was a new chat, update the chatId from the response
-      if (isNewChat && data.chatId) {
-        window.history.replaceState({}, '', `/chat/${data.chatId}`);
-        setIsNewChat(false);
-      }
-
-      // Update messages with the complete response
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        content: data.content,
-        role: 'assistant',
-        timestamp: new Date(),
-      }]);
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        content: "Sorry, there was an error processing your message. Please try again.",
-        role: "assistant",
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      // Remove the loading message and show error
+      setMessages(prev => {
+        const filtered = prev.filter(msg => msg.id !== assistantPlaceholder.id);
+        return [
+          ...filtered,
+          {
+            id: `error-${Date.now()}`,
+            content: "Sorry, there was an error processing your message. Please try again.",
+            role: "assistant" as const,
+            timestamp: new Date(),
+          }
+        ];
+      });
     } finally {
+      // Always reset loading state
       setIsLoading(false);
     }
   };
 
+
   return (
     <div className="flex h-screen bg-[#212121]">
-      <Sidebar 
-        isCollapsed={isCollapsed} 
-        onToggleCollapse={toggleSidebar} 
-      />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar isSidebarOpen={!isCollapsed}>
-          <button 
-            onClick={toggleSidebar} 
-            className="md:hidden p-2 rounded-md hover:bg-gray-700 text-gray-300"
-          >
-            <SidebarIcon size={20} />
-          </button>
-        </Navbar>
-        <ScrollArea className="flex-1 overflow-y-auto px-4 py-4 md:px-8 transition-all duration-300">
-          <div className="space-y-4 max-w-3xl mx-auto w-full">
+      <Sidebar isCollapsed={isCollapsed} onToggleCollapse={toggleSidebar} />
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <Navbar onToggleSidebar={toggleSidebar} isCollapsed={isCollapsed} isSidebarOpen={!isCollapsed} />
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto w-full px-4 py-6 space-y-6">
             {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full ">
-                Start a conversation with the AI assistant
+              <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
+                how can i help you today?
               </div>
             ) : (
               messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  } w-full`}
+                    message.role === 'assistant' ? 'justify-start' : 'justify-end'
+                  }`}
                 >
                   <div
-                    className={`max-w-3xl w-full ${
-                      message.role === "user" ? "text-right" : "text-left"
+                    className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                      message.role === 'assistant'
+                        ? ''
+                        : 'bg-[#303030]'
                     }`}
                   >
-                    <div
-                      className={`${message.role === "user"
-                        ? "bg-[#303030] rounded-2xl px-4 py-3 text-white text-md font-normal inline-block max-w-full break-words"
-                        : "rounded-lg px-4 py-3 text-white "
-                        }`}
-                    >
-                      {message.role === "user" ? (
-                        <p className="whitespace-pre-wrap text-left ">{message.content}</p>
-                      ) : (
-                        <div className="prose prose-invert max-w-none">
-                          <MarkdownRenderer content={message.content} />
-                        </div>
-                      )}
-                    </div>
+                    {message.role === 'assistant' && isLoading && message.content === '' ? (
+                      <TypingIndicator />
+                    ) : (
+                      <MarkdownRenderer content={message.content} />
+                    )}
                   </div>
                 </div>
               ))
@@ -167,7 +247,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
           <div className="w-full max-w-3xl mx-auto">
             <ChatInput
               input={input}
-              isLoading={isLoading}
+              disabled={!input.trim() || isLoading}
               onInputChange={setInput}
               onSendMessage={handleSendMessage}
               onFileUpload={(files) => {

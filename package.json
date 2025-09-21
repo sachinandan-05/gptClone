@@ -24,6 +24,7 @@
     "ai": "^5.0.47",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.2",
     "geist": "^1.5.1",
     "lucide-react": "^0.544.0",
     "mem0ai": "^2.1.38",

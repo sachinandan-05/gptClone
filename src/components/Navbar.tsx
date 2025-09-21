@@ -4,10 +4,12 @@ import { DropdownMenuCheckboxes } from '../app/helper/dropdown';
 
 interface NavbarProps {
   children?: ReactNode;
+  isCollapsed: boolean;
   isSidebarOpen?: boolean;
+  onToggleSidebar: () => void;
 }
 
-export default function Navbar({ children, isSidebarOpen = true }: NavbarProps) {
+export default function Navbar({ children, isSidebarOpen = true, onToggleSidebar }: NavbarProps) {
   const [selected, setSelected] = useState("ChatGPT") // default shown in navbar
 
   return (
