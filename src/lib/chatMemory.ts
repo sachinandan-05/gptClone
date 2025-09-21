@@ -43,36 +43,18 @@ const filterSystemMessages = (messages: ChatMessage[]): Array<{ role: 'user' | '
 
 export async function saveChatMemory(chatMemory: ChatMemory): Promise<boolean> {
   try {
-    const memoryKey = `chat:${chatMemory.chatId}:${chatMemory.userId}`;
-    
-    // First, check if we already have a memory for this chat
-    const existing = await getChatMemory(chatMemory.chatId, chatMemory.userId);
-
-    // Prepare options for mem0
-    const options = {
-      userId: chatMemory.userId,
-      metadata: {
-        chatId: chatMemory.chatId,
-        type: 'chat_memory',
-        memoryKey
-      }
-    };
-
     // Filter out system messages and prepare for mem0
     const messagesForMem0 = filterSystemMessages(chatMemory.messages);
-    const memoryContent = JSON.stringify(messagesForMem0);
 
-    if (existing) {
-      // Update existing memory
-      await mem0.update(memoryKey, {
-        text: memoryContent,
-        metadata: options.metadata
-      });
-    } else {
-      // Create new memory with the serialized content
-      // @ts-ignore - The mem0.add type expects an array, but we're sending a string
-      await mem0.add(memoryContent, options);
-    }
+    // Always save new messages directly - this creates a memory entry
+    await mem0.add(messagesForMem0, {
+      user_id: chatMemory.userId,
+      metadata: {
+        type: 'shared_user_memory',
+        chatId: chatMemory.chatId,
+        timestamp: new Date().toISOString()
+      }
+    });
     
     return true;
   } catch (error) {
@@ -81,19 +63,19 @@ export async function saveChatMemory(chatMemory: ChatMemory): Promise<boolean> {
   }
 }
 
-export async function getChatMemory(chatId: string, userId: string): Promise<ChatMemory | null> {
+export async function getSharedUserMemory(userId: string): Promise<ChatMemory | null> {
   try {
-    const memoryKey = `chat:${chatId}:${userId}`;
-    
     // Get all memories for this user
     const allMemories = await mem0.getAll({
-      user_id : userId,
+      user_id: userId,
       limit: 100 // Adjust limit as needed
     }) as unknown as MemoryResult[];
     
-    if (!Array.isArray(allMemories)) return null;
+    if (!Array.isArray(allMemories) || allMemories.length === 0) return null;
     
-    // Find the memory for this chat
+    // Collect all messages from shared memories
+    const allMessages: ChatMessage[] = [];
+    
     for (const memory of allMemories) {
       try {
         if (!memory.metadata) continue;
@@ -103,13 +85,19 @@ export async function getChatMemory(chatId: string, userId: string): Promise<Cha
           ? JSON.parse(memory.metadata) 
           : memory.metadata;
           
-        if (meta.chatId === chatId && meta.type === 'chat_memory') {
-          // The memory content is in the second system message
-          const memoryContent = memory.content?.find(
-            (msg: MemoryMessage) => msg.role === 'system' && msg.content.startsWith('{')
-          );
-          
-          return memoryContent ? deserializeMemory(memoryContent.content) : null;
+        if (meta.type === 'shared_user_memory') {
+          // Extract messages from the memory content
+          if (memory.content && Array.isArray(memory.content)) {
+            for (const msg of memory.content) {
+              if (msg.role === 'user' || msg.role === 'assistant') {
+                allMessages.push({
+                  role: msg.role as 'user' | 'assistant',
+                  content: msg.content,
+                  timestamp: new Date(meta.timestamp || Date.now())
+                });
+              }
+            }
+          }
         }
       } catch (e) {
         console.error('Error parsing memory metadata:', e);
@@ -117,11 +105,28 @@ export async function getChatMemory(chatId: string, userId: string): Promise<Cha
       }
     }
     
-    return null;
-          } catch (error) {
-    console.error('Error retrieving chat memory:', error);
+    if (allMessages.length === 0) return null;
+    
+    // Sort messages by timestamp and return most recent ones
+    const sortedMessages = allMessages
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+      .slice(-50); // Keep last 50 messages
+    
+    return {
+      chatId: 'shared',
+      userId,
+      messages: sortedMessages
+    };
+    
+  } catch (error) {
+    console.error('Error retrieving shared user memory:', error);
     return null;
   }
+}
+
+export async function getChatMemory(chatId: string, userId: string): Promise<ChatMemory | null> {
+  // Now getChatMemory returns the shared user memory instead of chat-specific memory
+  return await getSharedUserMemory(userId);
 }
 
 export async function updateChatMemory(
@@ -130,8 +135,10 @@ export async function updateChatMemory(
   updateFn: (current: ChatMemory | null) => ChatMemory
 ): Promise<boolean> {
   try {
-    const current = await getChatMemory(chatId, userId);
+    const current = await getSharedUserMemory(userId);
     const updated = updateFn(current);
+    // Update the chatId to the current one being used
+    updated.chatId = chatId;
     return await saveChatMemory(updated);
   } catch (error) {
     console.error('Error updating chat memory:', error);

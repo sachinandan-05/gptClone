@@ -6,6 +6,7 @@ import { Chat } from '@/models/chat';
 import { Message as MessageModel } from '@/models/message';
 import dbConnect from '@/lib/mongodb';
 import { sendWebhook } from '@/lib/webhook';
+import { getSharedUserMemory, saveChatMemory, ChatMessage, MessageRole } from '@/lib/chatMemory';
 import mem0 from '@/lib/mem0';
 
 // Initialize OpenAI clients
@@ -32,18 +33,55 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Save messages to mem0
-    const memoryMessages = messages
-      .filter((m: any) => ['user', 'assistant'].includes(m.role))
-      .map((m: any) => ({ role: m.role, content: String(m.content) }));
-    await mem0.add(memoryMessages, { user_id: userId });
+    // Get relevant context from shared memory using search
+    const contextMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    
+    if (userMessage?.content) {
+      try {
+        // Search for relevant context from previous conversations
+        const relevantMemories = await mem0.search(userMessage.content, {
+          user_id: userId,
+          limit: 5
+        });
 
-    // Format messages for OpenAI/OpenRouter
+        if (relevantMemories && Array.isArray(relevantMemories)) {
+          for (const memory of relevantMemories.slice(0, 3)) { // Use top 3 most relevant memories
+            if (memory.memory && typeof memory.memory === 'string') {
+              // Add as context with a note that it's from previous conversation
+              (contextMessages as Array<{ role: 'user' | 'assistant'; content: string }>).push({
+                role: 'assistant',
+                content: `[Previous context: ${memory.memory}]`
+              });
+            }
+          }
+        }
+      } catch (searchError) {
+        console.error('Error searching memories:', searchError);
+        // Continue without context if search fails
+      }
+    }
+
+    // Save current conversation to shared memory
+    const currentMessages: ChatMessage[] = messages.map((m: Record<string, unknown>) => ({
+      role: m.role as MessageRole,
+      content: String(m.content),
+      timestamp: new Date()
+    }));
+
+    // Save to shared memory (will create separate entries for each conversation)
+    await saveChatMemory({
+      chatId: chatId || 'new',
+      userId,
+      messages: currentMessages
+    });
+
+    // Format messages for OpenAI/OpenRouter including context
     const openAIMessages = [
-      { role: 'system', content: 'You are a helpful AI assistant.' },
+      { role: 'system', content: 'You are a helpful AI assistant. Use any relevant context from previous conversations to provide better responses. Context from previous conversations is marked with [Previous context: ...].' },
+      ...contextMessages, // Include relevant context from search
       ...messages
-        .filter((m: any) => ['system', 'user', 'assistant'].includes(m.role) && m.content?.trim())
-        .map((m: any) => ({ role: m.role, content: String(m.content) })),
+        .filter((m: Record<string, unknown>) => ['system', 'user', 'assistant'].includes(String(m.role)) && String(m.content)?.trim())
+        .map((m: Record<string, unknown>) => ({ role: m.role, content: String(m.content) })),
     ];
 
     // If streaming requested
@@ -140,11 +178,24 @@ export async function POST(req: NextRequest) {
               $push: { messages: assistantMsgDoc._id },
               $set: { updatedAt: new Date() },
             });
+
+            // Update shared memory with the assistant's response
+            const updatedMessages = [...currentMessages, {
+              role: 'assistant' as MessageRole,
+              content: assistantReply,
+              timestamp: new Date()
+            }];
+            
+            await saveChatMemory({
+              chatId: currentChatId,
+              userId,
+              messages: updatedMessages
+            });
           }
 
           await writer.write(encoder.encode('data: [DONE]\n\n'));
         } catch (err) {
-          console.error('Streaming error:', err);
+          // console.error('Streaming error:', err);
           await writer.write(
             encoder.encode(`data: ${JSON.stringify({ error: 'Error generating response' })}\n\n`)
           );
@@ -204,6 +255,19 @@ export async function POST(req: NextRequest) {
       await Chat.findByIdAndUpdate(currentChatId, {
         $push: { messages: assistantMsgDoc._id },
         $set: { updatedAt: new Date() },
+      });
+
+      // Update shared memory with the assistant's response
+      const updatedMessages = [...currentMessages, {
+        role: 'assistant' as MessageRole,
+        content: aiResponse,
+        timestamp: new Date()
+      }];
+      
+      await saveChatMemory({
+        chatId: currentChatId,
+        userId,
+        messages: updatedMessages
       });
     }
 

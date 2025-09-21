@@ -6,12 +6,12 @@ import { IMessage } from '@/models/message';
 
 interface ChatPageProps {
   params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: { guestId?: string };
 }
 
 export const dynamic = 'force-dynamic';
 
-export default async function ChatPage({ params }: ChatPageProps) {
+export default async function ChatPage({ params, searchParams }: ChatPageProps) {
   try {
     // Ensure params is fully resolved before destructuring
     const resolvedParams = await params;
@@ -21,21 +21,28 @@ export default async function ChatPage({ params }: ChatPageProps) {
       return <ChatUI initialMessages={[]} />;
     }
 
-    // Verify user is authenticated
     const user = await currentUser();
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-    
+    const isGuest = !user;
+    const guestId = searchParams.guestId;
+
     // Get chat and verify ownership
     const chat = await getChatById(id);
-    if (!chat || chat.userId.toString() !== user.id) {
+    if (!chat) {
+      notFound();
+    }
+
+    // Verify ownership - either userId matches or guestId matches
+    const isOwner = isGuest 
+      ? chat.guestId === guestId
+      : (chat.userId && user?.id && chat.userId === user.id);
+
+    if (!isOwner) {
       notFound();
     }
     
-    // Get messages directly from database with user ID for security
-    console.log(`Fetching messages for chat ${id} and user ${user.id}`);
-    const messages = await getMessagesByChatId(id, user.id);
+    // Get messages with appropriate user/guest context
+    console.log(`Fetching messages for chat ${id} (${isGuest ? 'guest' : 'user'}: ${isGuest ? guestId : user.id})`);
+    const messages = await getMessagesByChatId(id, isGuest ? undefined : user.id, guestId);
     
     if (!messages || messages.length === 0) {
       console.log('No messages found for chat:', id);

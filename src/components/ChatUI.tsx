@@ -40,7 +40,8 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
   const [isNewChat, setIsNewChat] = useState(!chatId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [currentChatId, setCurrentChatId] = useState(chatId);
+
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
   };
@@ -84,10 +85,10 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput("");
-    
+
     // Add loading state for the assistant's response
     setIsLoading(true);
-    
+
     // Add placeholder for assistant's response
     const assistantPlaceholder: Message = {
       id: `assistant-${Date.now()}`,
@@ -95,7 +96,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
       role: 'assistant',
       timestamp: new Date(),
     };
-    
+
     setMessages(prev => [...prev, assistantPlaceholder]);
 
     try {
@@ -107,7 +108,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         },
         body: JSON.stringify({
           messages: updatedMessages,
-          chatId: chatId || undefined,
+          chatId: currentChatId || undefined,
           stream: true,
         }),
       });
@@ -141,10 +142,11 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.substring(6));
-                
+
                 // Handle chat ID if it's a new chat
                 if (data.chatId) {
                   chatIdFromResponse = data.chatId;
+                  setCurrentChatId(data.chatId);
                   if (isNewChat) {
                     window.history.replaceState({}, '', `/chat/${data.chatId}`);
                     setIsNewChat(false);
@@ -157,7 +159,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                 if (data.choices?.[0]?.delta?.content) {
                   const content = data.choices[0].delta.content;
                   assistantContent += content;
-                  
+
                   // Update the assistant's message with the new content
                   setMessages(prev =>
                     prev.map(msg =>
@@ -182,14 +184,14 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         prev.map(msg =>
           msg.id === assistantPlaceholder.id
             ? {
-                ...msg,
-                id: `msg-${Date.now()}`,
-                content: assistantContent,
-              }
+              ...msg,
+              id: `msg-${Date.now()}`,
+              content: assistantContent,
+            }
             : msg
         )
       );
-      
+
     } catch (error) {
       console.error('Error sending message:', error);
       // Remove the loading message and show error
@@ -227,29 +229,27 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
               messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${
-                    message.role === 'assistant' ? 'justify-start' : 'justify-end'}
+                  className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}
                   }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                      message.role === 'user' ? 'bg-[#303030]' : 'bg-none'
-                    }`}
+                    className={`max-w-[80%] rounded-lg px-4 py-3 ${message.role === 'user' ? 'bg-[#303030]' : 'bg-none'
+                      }`}
                   >
                     {message.fileUrl && message.fileType === 'image' && (
                       <div className="mb-2">
-                        <img 
-                          src={message.fileUrl} 
-                          alt="Uploaded content" 
+                        <img
+                          src={message.fileUrl}
+                          alt="Uploaded content"
                           className="max-h-60 max-w-full rounded-md object-contain"
                         />
                       </div>
                     )}
                     {message.fileUrl && message.fileType === 'document' && (
                       <div className="mb-2 p-2 bg-white/10 rounded-md">
-                        <a 
-                          href={message.fileUrl} 
-                          target="_blank" 
+                        <a
+                          href={message.fileUrl}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-300 hover:underline flex items-center"
                         >

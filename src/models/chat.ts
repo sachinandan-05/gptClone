@@ -3,11 +3,12 @@ import { IMessage } from "./message";
 
 export interface IChat extends Document {
   _id: mongoose.Types.ObjectId;
-  userId: string; // or ObjectId if you have a User model
+  userId?: string; // Optional for guest users
+  guestId?: string; // For guest users
   title: string;
   messages: IMessage[];
-  role?: string;  // Optional as it might be a default value
-  content?: string;  // Optional as it might be a default value
+  role?: string;
+  content?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,8 +17,13 @@ const chatSchema = new Schema<IChat>(
   {
     userId: { 
       type: String, 
-      required: true, 
+      required: false, // Made optional for guest users
       index: true 
+    },
+    guestId: {
+      type: String,
+      required: false,
+      index: true
     },
     title: { 
       type: String, 
@@ -57,8 +63,22 @@ const chatSchema = new Schema<IChat>(
 );
 
 // Add indexes for better query performance
-chatSchema.index({ userId: 1, updatedAt: -1 });
+chatSchema.index({ userId: 1, updatedAt: -1 }, { sparse: true });
+chatSchema.index({ guestId: 1, updatedAt: -1 }, { sparse: true });
 chatSchema.index({ 'messages': 1 });
+
+// Add compound index to ensure either userId or guestId is present
+chatSchema.index(
+  { userId: 1, guestId: 1 },
+  {
+    partialFilterExpression: {
+      $or: [
+        { userId: { $exists: true } },
+        { guestId: { $exists: true } }
+      ]
+    }
+  }
+);
 
 export const Chat: Model<IChat> =
   mongoose.models.Chat || mongoose.model<IChat>("Chat", chatSchema);

@@ -3,7 +3,8 @@ import { IChat } from "./chat";
 
 export interface IMessage extends Document {
     chatId: mongoose.Types.ObjectId;
-    userId: string;
+    userId?: string;
+    guestId?: string;
     role: "user" | "assistant" | "system";
     content: string;
     fileUrl?: string;
@@ -21,8 +22,13 @@ const messageSchema = new Schema<IMessage>(
     },
     userId: { 
       type: String, 
-      required: true, 
+      required: false, 
       index: true 
+    },
+    guestId: {
+      type: String,
+      required: false,
+      index: true
     },
     role: { 
       type: String, 

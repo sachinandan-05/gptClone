@@ -76,7 +76,8 @@ export interface ChatMessage {
 
 export interface ChatDocument extends mongoose.Document {
   _id: string;
-  userId: string;
+  userId?: string;
+  guestId?: string;
   title: string;
   messages: ChatMessage[];
   createdAt: Date;
@@ -106,8 +107,20 @@ export const withTransaction = async (fn: (session: mongoose.ClientSession) => P
 
 const chatSchema = new mongoose.Schema<ChatDocument, ChatModel>(
   {
-    userId: { type: String, required: true, index: true },
-    title: { type: String, required: true },
+    userId: { 
+      type: String, 
+      required: false, 
+      index: true 
+    },
+    guestId: {
+      type: String,
+      required: false,
+      index: true
+    },
+    title: { 
+      type: String, 
+      required: true 
+    },
     messages: [
       {
         role: { type: String, enum: ['user', 'assistant', 'system'], required: true },
@@ -155,7 +168,7 @@ export async function getChatById(id: string): Promise<ChatDocument | null> {
   }
 }
 
-export async function getMessagesByChatId(chatId: string, userId?: string): Promise<IMessage[]> {
+export async function getMessagesByChatId(chatId: string, userId?: string, guestId?: string): Promise<IMessage[]> {
   try {
     await dbConnect();
     
@@ -168,11 +181,17 @@ export async function getMessagesByChatId(chatId: string, userId?: string): Prom
       chatId: new mongoose.Types.ObjectId(chatId)
     };
     
+    // If we have a userId, use that, otherwise use guestId
     if (userId) {
       query.userId = userId;
+    } else if (guestId) {
+      query.guestId = guestId;
+    } else {
+      console.error('Either userId or guestId must be provided');
+      return [];
     }
     
-    console.log(`Fetching messages for chat ${chatId}${userId ? ` and user ${userId}` : ''}`);
+    console.log(`Fetching messages for chat ${chatId}${userId ? ` and user ${userId}` : ` and guest ${guestId}`}`);
     
     const messages = await Message.find(query)
       .sort({ timestamp: 1 })
