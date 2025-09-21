@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Sidebar as SidebarIcon, Dot } from "lucide-react";
+import { Bot, User, Sidebar as SidebarIcon, Dot, Paperclip } from "lucide-react";
 import Navbar from './Navbar';
 import ChatInput from './ChatInput';
 import { Sidebar } from './Sidebar';
@@ -22,6 +22,8 @@ export interface Message {
   content: string;
   role: "user" | "assistant";
   timestamp: Date;
+  fileUrl?: string;
+  fileType?: 'image' | 'document' | 'video' | 'audio' | 'other';
 }
 
 interface ChatUIProps {
@@ -29,6 +31,7 @@ interface ChatUIProps {
   chatId?: string;
   initialInput?: string;
   onNewChatCreated?: (chatId: string) => void;
+  onSendMessage?: (content: string, fileUrl?: string, fileType?: 'image' | 'document' | 'video' | 'audio' | 'other') => void;
 }
 
 export default function ChatUI({ initialMessages = [], chatId, initialInput = '', onNewChatCreated }: ChatUIProps) {
@@ -42,9 +45,10 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
     setIsCollapsed(!isCollapsed);
   };
 
-  const handleSendMessage = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    handleSubmit(e);
+  const handleSendMessage = async (content: string, fileUrl?: string, fileType?: string) => {
+    // Update the input with the content and submit
+    setInput(content);
+    await handleSubmit(undefined, fileUrl, fileType as 'image' | 'document' | 'video' | 'audio' | 'other' | undefined);
   };
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -61,15 +65,19 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent, fileUrl?: string, fileType?: 'image' | 'document' | 'video' | 'audio' | 'other') => {
     e?.preventDefault?.();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !fileUrl) || isLoading) return;
+
+    // If there's no text input but there is a file, use a default message
+    const messageContent = input.trim() || (fileType === 'image' ? '[Image]' : '[File]');
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
-      content: input,
+      content: messageContent,
       role: 'user',
       timestamp: new Date(),
+      ...(fileUrl && fileType && { fileUrl, fileType })
     };
 
     // Update local state immediately with user message
@@ -220,21 +228,37 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                 <div
                   key={message.id}
                   className={`flex ${
-                    message.role === 'assistant' ? 'justify-start' : 'justify-end'
+                    message.role === 'assistant' ? 'justify-start' : 'justify-end'}
                   }`}
                 >
                   <div
                     className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                      message.role === 'assistant'
-                        ? ''
-                        : 'bg-[#303030]'
+                      message.role === 'user' ? 'bg-[#303030]' : 'bg-none'
                     }`}
                   >
-                    {message.role === 'assistant' && isLoading && message.content === '' ? (
-                      <TypingIndicator />
-                    ) : (
-                      <MarkdownRenderer content={message.content} />
+                    {message.fileUrl && message.fileType === 'image' && (
+                      <div className="mb-2">
+                        <img 
+                          src={message.fileUrl} 
+                          alt="Uploaded content" 
+                          className="max-h-60 max-w-full rounded-md object-contain"
+                        />
+                      </div>
                     )}
+                    {message.fileUrl && message.fileType === 'document' && (
+                      <div className="mb-2 p-2 bg-white/10 rounded-md">
+                        <a 
+                          href={message.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-300 hover:underline flex items-center"
+                        >
+                          <Paperclip className="w-4 h-4 mr-1" />
+                          View Document
+                        </a>
+                      </div>
+                    )}
+                    {message.content && <MarkdownRenderer content={message.content} />}
                   </div>
                 </div>
               ))
@@ -247,13 +271,9 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
           <div className="w-full max-w-3xl mx-auto">
             <ChatInput
               input={input}
-              disabled={!input.trim() || isLoading}
               onInputChange={setInput}
               onSendMessage={handleSendMessage}
-              onFileUpload={(files) => {
-                // Handle file uploads if needed
-                console.log('Files to upload:', files);
-              }}
+              isLoading={isLoading}
             />
           </div>
         </div>

@@ -6,6 +6,8 @@ export interface IMessage extends Document {
     userId: string;
     role: "user" | "assistant" | "system";
     content: string;
+    fileUrl?: string;
+    fileType?: 'image' | 'document' | 'video' | 'audio' | 'other';
     timestamp: Date;
 }
   
@@ -31,6 +33,15 @@ const messageSchema = new Schema<IMessage>(
       type: String, 
       required: [true, 'Message content is required'],
       trim: true
+    },
+    fileUrl: {
+      type: String,
+      default: null
+    },
+    fileType: {
+      type: String,
+      enum: ['image', 'document', 'video', 'audio', 'other'],
+      default: null
     },
     timestamp: { 
       type: Date, 
