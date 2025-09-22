@@ -5,15 +5,30 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, User, Sidebar as SidebarIcon, Dot, Paperclip } from "lucide-react";
 import Navbar from './Navbar';
 import ChatInput from './ChatInput';
-import { Sidebar } from './Sidebar';
+import { Sidebar} from './Sidebar';
 import { MarkdownRenderer } from '../app/helper/MarkdownRenderer';
 
-// Typing indicator component
+// Typing indicator component with smooth animation
 const TypingIndicator = () => (
-  <div className="flex space-x-1 p-2">
-    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+  <div className="flex items-center space-x-1 p-2">
+    <div className="w-2 h-2 rounded-full bg-gray-400" style={{
+      animation: 'bounce 1.4s infinite ease-in-out',
+      animationDelay: '0s'
+    }} />
+    <div className="w-2 h-2 rounded-full bg-gray-400" style={{
+      animation: 'bounce 1.4s infinite ease-in-out',
+      animationDelay: '0.2s'
+    }} />
+    <div className="w-2 h-2 rounded-full bg-gray-400" style={{
+      animation: 'bounce 1.4s infinite ease-in-out',
+      animationDelay: '0.4s'
+    }} />
+    <style jsx>{`
+      @keyframes bounce {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-6px); }
+      }
+    `}</style>
   </div>
 );
 
@@ -39,10 +54,11 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
   const [input, setInput] = useState(initialInput);
   const [isNewChat, setIsNewChat] = useState(!chatId);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentChatId, setCurrentChatId] = useState(chatId);
 
-  const toggleSidebar = () => {
+  const toggleSidebarCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
 
@@ -215,55 +231,85 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
 
 
   return (
-    <div className="flex h-screen bg-[#212121]">
-      <Sidebar isCollapsed={isCollapsed} onToggleCollapse={toggleSidebar} />
+    <div 
+      className="flex h-screen bg-[#212121]"
+      style={{
+        fontFamily: 'ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"',
+        fontSize: '16px',
+        fontWeight: 400,
+        lineHeight: '28px',
+        color: 'rgb(255, 255, 255)'
+      }}
+    >
+      {showSidebar && (
+        <div className="fixed inset-0 z-1 w-[259px] ">
+          <Sidebar
+            isCollapsed={isCollapsed}
+            onToggleCollapse={toggleSidebarCollapse}
+            onClose={() => setShowSidebar(false)}
+          />
+        </div>
+      )}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Navbar onToggleSidebar={toggleSidebar} isCollapsed={isCollapsed} isSidebarOpen={!isCollapsed} />
+        <Navbar 
+       
+
+          isCollapsed={isCollapsed}
+          showSidebar={showSidebar}
+          setShowSidebar={setShowSidebar}
+        />
         <ScrollArea className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto w-full px-4 py-6 space-y-6">
+          <div className="max-w-3xl mx-auto w-full px-6 py-6 space-y-6">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
                 how can i help you today?
               </div>
             ) : (
-              messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}
-                  }`}
-                >
+              <>
+                {messages.map((message) => (
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-3 ${message.role === 'user' ? 'bg-[#303030]' : 'bg-none'
-                      }`}
+                    key={message.id}
+                    className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
                   >
-                    {message.fileUrl && message.fileType === 'image' && (
-                      <div className="mb-2">
-                        <img
-                          src={message.fileUrl}
-                          alt="Uploaded content"
-                          className="max-h-60 max-w-full rounded-md object-contain"
-                        />
-                      </div>
-                    )}
-                    {message.fileUrl && message.fileType === 'document' && (
-                      <div className="mb-2 p-2 bg-white/10 rounded-md">
-                        <a
-                          href={message.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-300 hover:underline flex items-center"
-                        >
-                          <Paperclip className="w-4 h-4 mr-1" />
-                          View Document
-                        </a>
-                      </div>
-                    )}
-                    {message.content && <MarkdownRenderer content={message.content} />}
+                    <div
+                      className={`max-w-[80%] rounded-lg px-4 py-3 ${message.role === 'user' ? 'bg-[#303030]' : 'bg-none'}`}
+                    >
+                      {message.fileUrl && message.fileType === 'image' && (
+                        <div className="mb-2">
+                          <img
+                            src={message.fileUrl}
+                            alt="Uploaded content"
+                            className="max-h-60 max-w-full rounded-md object-contain"
+                          />
+                        </div>
+                      )}
+                      {message.fileUrl && message.fileType === 'document' && (
+                        <div className="mb-2 p-2 bg-white/10 rounded-md">
+                          <a
+                            href={message.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-300 hover:underline flex items-center"
+                          >
+                            <Paperclip className="w-4 h-4 mr-1" />
+                            View Document
+                          </a>
+                        </div>
+                      )}
+                      {message.content && <MarkdownRenderer content={message.content} />}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+                {isLoading && messages[messages.length - 1]?.role === 'user' && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] rounded-lg px-4 py-3">
+                      <TypingIndicator />
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </>
             )}
-            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
