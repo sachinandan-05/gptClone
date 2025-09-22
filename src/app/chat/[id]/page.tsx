@@ -3,6 +3,7 @@ import { getChatById, getMessagesByChatId } from '@/lib/mongodb';
 import { notFound } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
 import { IMessage } from '@/models/message';
+import Link from 'next/link';
 
 interface ChatPageProps {
   params: { id: string };
@@ -77,12 +78,12 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
         <p className="text-gray-600">
           {error instanceof Error ? error.message : 'An unexpected error occurred'}
         </p>
-        <a 
+        <Link 
           href="/" 
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
         >
           Back to Home
-        </a>
+        </Link>
       </div>
     );
   }

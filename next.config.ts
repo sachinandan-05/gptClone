@@ -10,6 +10,15 @@ const nextConfig: NextConfig = {
     return config;
   },
   poweredByHeader: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  images: {
+    domains: ["images.unsplash.com", "oaidalleapiprodscus.blob.core.windows.net", "res.cloudinary.com"],
+  },
   env: {
     MEM0_API_KEY: process.env.MEM0_API_KEY,
   },

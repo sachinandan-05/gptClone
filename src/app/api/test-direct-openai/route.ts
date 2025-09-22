@@ -25,14 +25,14 @@ export async function GET() {
       message: 'Direct OpenAI API is working!',
       response: response.choices[0]?.message?.content || 'No content',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Direct OpenAI API test error:', error);
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to connect to direct OpenAI API',
-        details: error.message,
-        code: error.code,
+        details: error instanceof Error ? error.message : 'Unknown error',
+        code: error && typeof error === 'object' && 'code' in error ? String(error.code) : 'UNKNOWN_ERROR',
       },
       { status: 500 }
     );

@@ -577,7 +577,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Chat API error:", error);
     return NextResponse.json(
-      { error: "Failed to generate response", details: error.message || "Unknown error" },
+      { error: "Failed to generate response", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }

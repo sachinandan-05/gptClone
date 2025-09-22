@@ -3,6 +3,7 @@
 import React, { useState, ReactNode } from 'react';
 import ReactMarkdown, { Components } from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { Element } from 'hast';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { Copy, Check } from 'lucide-react';
 
@@ -97,12 +98,12 @@ interface MarkdownRendererProps {
   content: string;
 }
 
-interface CodeProps {
-  node?: any;
+interface CodeProps extends React.HTMLAttributes<HTMLElement> {
+  node?: Element;
   inline?: boolean;
   className?: string;
   children?: ReactNode;
-  [key: string]: any;
+  match?: RegExpExecArray | null;
 }
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
@@ -199,6 +200,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     td: (props) => (
       <td className="border border-gray-600 px-4 py-2 text-gray-200" {...props}>
         {props.children}
+
       </td>
     )
   };
