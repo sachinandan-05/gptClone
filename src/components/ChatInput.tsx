@@ -255,10 +255,11 @@ export default function ChatInput({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-1 px-2 sm:px-4">
+    <div className="w-full max-w-4xl mx-auto p-1">
+      <div className="w-[770px] mx-auto">
       {/* File Preview */}
       {previewUrl && selectedFile?.type.startsWith('image/') && (
-        <div className="relative mb-2 w-full max-w-3xl mx-auto">
+        <div className="relative mb-2 w-[770px] mx-auto">
           <div className="relative inline-block">
             <img
               src={previewUrl}
@@ -277,15 +278,15 @@ export default function ChatInput({
       )}
       
       {selectedFile && !selectedFile.type.startsWith('image/') && (
-        <div className="relative mb-2 w-full max-w-3xl mx-auto px-2 sm:px-4">
-          <div className="inline-flex items-center bg-gray-800 rounded-lg px-3 py-2 border border-gray-600 w-full">
+        <div className="relative mb-2 w-[770px] mx-auto">
+          <div className="inline-flex items-center bg-gray-800 rounded-lg px-3 py-2 border border-gray-600">
             <Paperclip className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="text-sm text-gray-200 truncate flex-1 max-w-[200px] sm:max-w-md">
+            <span className="text-sm text-gray-200 truncate max-w-xs">
               {selectedFile.name}
             </span>
             <button
               onClick={removeFile}
-              className="ml-2 text-gray-400 hover:text-white flex-shrink-0"
+              className="ml-2 text-gray-400 hover:text-white"
               aria-label="Remove file"
             >
               <X className="w-4 h-4" />
@@ -300,7 +301,7 @@ export default function ChatInput({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative bg-[#303030] rounded-3xl shadow-lg w-full max-w-3xl mx-auto px-2 py-1.5 sm:px-3 sm:py-2 flex items-end ${
+        className={`relative bg-[#303030] rounded-3xl shadow-lg w-[770px] px-3 py-2 flex items-end ${
           isDragging ? 'ring-2 ring-blue-500' : ''
         }`}
       >
@@ -318,7 +319,7 @@ export default function ChatInput({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading || disabled || isUploading}
-          className="flex-shrink-0 p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-shrink-0 p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Attach file"
         >
           {isUploading ? (
@@ -340,7 +341,7 @@ export default function ChatInput({
             onKeyDown={handleKeyDown}
             placeholder="Ask anything"
             disabled={isLoading}
-            className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-sm sm:text-base leading-6 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-track-transparent pr-1"
+            className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-base leading-6 max-h-[200px] overflow-y-auto scrollbar-thin  scrollbar-track-transparent"
             rows={1}
           />
         </div>
@@ -349,7 +350,7 @@ export default function ChatInput({
         <div className="flex items-center gap-2 flex-shrink-0 pb-1">
           <button
             type="button"
-            className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading || disabled || isUploading}
             aria-label="Voice input"
           >
@@ -359,7 +360,7 @@ export default function ChatInput({
             type="button"
             onClick={handleSend}
             disabled={isLoading || disabled || isUploading || (!input?.trim() && !selectedFile)}
-            className={`p-1.5 sm:p-2 text-white rounded-full transition-colors ${
+            className={`p-2 text-white rounded-full transition-colors ${
               (input?.trim() || selectedFile) && !isLoading && !isUploading
                 ? 'bg-none hover:bg-gray-600'
                 : 'bg-none cursor-not-allowed'
@@ -373,6 +374,7 @@ export default function ChatInput({
             )}
           </button>
         </div>
+      </div>
     </div>
     </div>
   )

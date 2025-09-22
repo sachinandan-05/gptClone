@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Sidebar as SidebarIcon, Dot, Paperclip } from "lucide-react";
+import { Sidebar as SidebarIcon, Dot, Paperclip ,Loader} from "lucide-react";
 import Navbar from './Navbar';
 import ChatInput from './ChatInput';
 import { Sidebar} from './Sidebar';
@@ -39,6 +39,7 @@ export interface Message {
   timestamp: Date;
   fileUrl?: string;
   fileType?: 'image' | 'document' | 'video' | 'audio' | 'other';
+  isTyping?: boolean;
 }
 
 interface ChatUIProps {
@@ -111,6 +112,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
       content: '',
       role: 'assistant',
       timestamp: new Date(),
+      isTyping: true  // Add a flag to indicate this is a typing indicator
     };
 
     setMessages(prev => [...prev, assistantPlaceholder]);
@@ -176,11 +178,11 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                   const content = data.choices[0].delta.content;
                   assistantContent += content;
 
-                  // Update the assistant's message with the new content
+                  // Update the assistant's message with the new content and remove typing indicator
                   setMessages(prev =>
                     prev.map(msg =>
                       msg.id === assistantPlaceholder.id
-                        ? { ...msg, content: assistantContent }
+                        ? { ...msg, content: assistantContent, isTyping: false }
                         : msg
                     )
                   );
@@ -195,15 +197,11 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         reader.releaseLock();
       }
 
-      // Final update to the assistant's message with the complete content
+      // Final update to the assistant's message with the complete content and remove typing indicator
       setMessages(prev =>
         prev.map(msg =>
           msg.id === assistantPlaceholder.id
-            ? {
-              ...msg,
-              id: `msg-${Date.now()}`,
-              content: assistantContent,
-            }
+            ? { ...msg, content: assistantContent, isTyping: false }
             : msg
         )
       );
@@ -296,7 +294,13 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                           </a>
                         </div>
                       )}
-                      {message.content && <MarkdownRenderer content={message.content} />}
+                      {message.isTyping ? (
+                        <div className="flex items-center py-2">
+                          <Loader className="h-5 w-5 animate-spin text-gray-400" />
+                        </div>
+                      ) : message.content ? (
+                        <MarkdownRenderer content={message.content} />
+                      ) : null}
                     </div>
                   </div>
                 ))}
