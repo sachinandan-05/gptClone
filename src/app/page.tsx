@@ -48,5 +48,9 @@ export default function Home() {
   console.log(userId , "User is signed in");
 
   // If signed in, show the chat UI
-  return <ChatUI initialMessages={initialMessages} />;
+  return (
+    <div className='w-full h-full flex flex-col overflow-hidden'>
+      <ChatUI initialMessages={initialMessages} />
+    </div>
+  );
 }

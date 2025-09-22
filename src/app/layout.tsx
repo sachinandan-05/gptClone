@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Inter } from 'next/font/google';
 import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/components/Providers";
 import { Sidebar } from "@/components/Sidebar";
+import { ThemeProvider } from '@/components/theme-provider';
+import { cn } from '@/lib/utils';
 import "./globals.css";
+
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-sans',
+});
 
 export const metadata: Metadata = {
   title: "ChatGPT",
@@ -18,21 +26,29 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html
-        lang="en"
-        className="font-sans"
-        suppressHydrationWarning
-      >
-        <body className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100" suppressHydrationWarning>
-          <Providers>
-            <div className="flex h-screen">
-              {/* <Sidebar /> */}
-              <main className="flex-1 overflow-y-auto">
-                {children}
-              </main>
-            </div>
-            <Analytics />
-          </Providers>
+      <html lang="en" suppressHydrationWarning className="overflow-x-hidden">
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        </head>
+        <body className={cn(
+          "min-h-screen bg-background font-sans antialiased overflow-x-hidden w-full",
+          inter.variable
+        )}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Providers>
+              <div className="flex flex-col h-screen w-screen overflow-hidden">
+                {/* <Sidebar /> */}
+                <div className="flex-1 overflow-y-auto w-full max-w-full">
+                  {children}
+                </div>
+              </div>
+            </Providers>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

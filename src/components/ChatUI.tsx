@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sidebar as SidebarIcon, Dot, Paperclip ,Loader} from "lucide-react";
+import { Bot, User, Sidebar as SidebarIcon, Dot, Paperclip,  Loader } from "lucide-react";
 import Navbar from './Navbar';
 import ChatInput from './ChatInput';
 import { Sidebar} from './Sidebar';
@@ -39,7 +39,6 @@ export interface Message {
   timestamp: Date;
   fileUrl?: string;
   fileType?: 'image' | 'document' | 'video' | 'audio' | 'other';
-  isTyping?: boolean;
 }
 
 interface ChatUIProps {
@@ -112,7 +111,6 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
       content: '',
       role: 'assistant',
       timestamp: new Date(),
-      isTyping: true  // Add a flag to indicate this is a typing indicator
     };
 
     setMessages(prev => [...prev, assistantPlaceholder]);
@@ -178,11 +176,11 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                   const content = data.choices[0].delta.content;
                   assistantContent += content;
 
-                  // Update the assistant's message with the new content and remove typing indicator
+                  // Update the assistant's message with the new content
                   setMessages(prev =>
                     prev.map(msg =>
                       msg.id === assistantPlaceholder.id
-                        ? { ...msg, content: assistantContent, isTyping: false }
+                        ? { ...msg, content: assistantContent }
                         : msg
                     )
                   );
@@ -197,11 +195,15 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         reader.releaseLock();
       }
 
-      // Final update to the assistant's message with the complete content and remove typing indicator
+      // Final update to the assistant's message with the complete content
       setMessages(prev =>
         prev.map(msg =>
           msg.id === assistantPlaceholder.id
-            ? { ...msg, content: assistantContent, isTyping: false }
+            ? {
+              ...msg,
+              id: `msg-${Date.now()}`,
+              content: assistantContent,
+            }
             : msg
         )
       );
@@ -230,7 +232,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
 
   return (
     <div 
-      className="flex h-screen bg-[#212121]"
+      className="flex h-screen bg-[#212121] min-w-0 overflow-x-hidden"
       style={{
         fontFamily: 'ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"',
         fontSize: '16px',
@@ -248,7 +250,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
           />
         </div>
       )}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         <Navbar 
        
 
@@ -256,8 +258,9 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
           showSidebar={showSidebar}
           setShowSidebar={setShowSidebar}
         />
-        <ScrollArea className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto w-full px-6 py-6 space-y-6">
+        <div className="flex-1 w-full overflow-hidden">
+        <ScrollArea className="h-full w-full">
+          <div className="max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-6 space-y-6">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
                 how can i help you today?
@@ -270,7 +273,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                     className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-lg px-4 py-3 ${message.role === 'user' ? 'bg-[#303030]' : 'bg-none'}`}
+                      className={`max-w-[calc(100%-2rem)] sm:max-w-[80%] rounded-lg px-4 py-1 ${message.role === 'user' ? 'bg-[#303030]' : 'bg-none'}`}
                     >
                       {message.fileUrl && message.fileType === 'image' && (
                         <div className="mb-2">
@@ -294,20 +297,14 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                           </a>
                         </div>
                       )}
-                      {message.isTyping ? (
-                        <div className="flex items-center py-2">
-                          <Loader className="h-5 w-5 animate-spin text-gray-400" />
-                        </div>
-                      ) : message.content ? (
-                        <MarkdownRenderer content={message.content} />
-                      ) : null}
+                      {message.content && <MarkdownRenderer content={message.content} />}
                     </div>
                   </div>
                 ))}
                 {isLoading && messages[messages.length - 1]?.role === 'user' && (
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] rounded-lg px-4 py-3">
-                      <TypingIndicator />
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#303030] p-2">
+                      <Loader className="w-4 h-4 animate-spin text-gray-300" />
                     </div>
                   </div>
                 )}
@@ -316,9 +313,10 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
             )}
           </div>
         </ScrollArea>
+        </div>
 
-        <div className="">
-          <div className="w-full max-w-3xl mx-auto">
+        <div className="w-full">
+          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6">
             <ChatInput
               input={input}
               onInputChange={setInput}
