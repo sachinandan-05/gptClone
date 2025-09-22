@@ -18,9 +18,10 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onClose?: () => void;
+  onNewChat?: () => void;
 }
 
-export function Sidebar({ isCollapsed, onToggleCollapse, onClose }: SidebarProps) {
+export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: SidebarProps) {
   const router = useRouter()
   const { userId } = useAuth()
   const [chats, setChats] = useState<Array<{
@@ -175,7 +176,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose }: SidebarProps
       {/* New Chat Button */}
       <div className="px-2">
         <Button 
-          onClick={() => router.push('/')}
+          onClick={() => onNewChat ? onNewChat() : router.push('/')}
           className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start'} gap-2 ${isCollapsed ? 'bg-transparent' : 'bg-[#181818]'} text-sidebar-primary-foreground hover:bg-[#212121]`}
         >
           <Plus size={16} />

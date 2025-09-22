@@ -50,16 +50,25 @@ interface ChatUIProps {
 }
 
 export default function ChatUI({ initialMessages = [], chatId, initialInput = '', onNewChatCreated }: ChatUIProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState(initialInput);
   const [isNewChat, setIsNewChat] = useState(!chatId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentChatId, setCurrentChatId] = useState(chatId);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
 
   const toggleSidebarCollapse = () => {
     setIsCollapsed(!isCollapsed);
+  };
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setCurrentChatId(null);
+    // Reset any other chat-related state here
+    if (onNewChatCreated) {
+      onNewChatCreated('');
+    }
   };
 
   const handleSendMessage = async (content: string, fileUrl?: string, fileType?: string) => {
@@ -247,6 +256,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
             isCollapsed={isCollapsed}
             onToggleCollapse={toggleSidebarCollapse}
             onClose={() => setShowSidebar(false)}
+            onNewChat={handleNewChat}
           />
         </div>
       )}
@@ -301,10 +311,10 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                     </div>
                   </div>
                 ))}
-                {isLoading && messages[messages.length - 1]?.role === 'user' && (
+                {isLoading && (
                   <div className="flex justify-start">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#303030] p-2">
-                      <Loader className="w-4 h-4 animate-spin text-gray-300" />
+                    <div className="max-w-[calc(100%-2rem)] sm:max-w-[80%] rounded-lg px-4 py-1">
+                      <TypingIndicator />
                     </div>
                   </div>
                 )}

@@ -216,7 +216,7 @@ export default function UIwoAuth() {
                 <Button onClick={() => openSignIn()} className="text-black bg-white px-4 py-2 rounded-full text-sm font-medium">
                   Log in
                 </Button>
-                <Button onClick={() => openSignIn()} className="text-white bg-transparent border border-gray-600 px-4 py-2 rounded-full text-sm">
+                <Button onClick={() => openSignIn()} className=" hidden lg:block text-white bg-transparent border border-gray-600 px-4 py-2 rounded-full text-sm">
                   Sign up for free
                 </Button>
               </>
