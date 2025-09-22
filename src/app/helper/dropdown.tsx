@@ -10,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "components/ui/dropdown-menu"
+} from "@/app/ui/dropdown-menu"
 
 interface DropdownMenuCheckboxesProps {
   selected: string;
