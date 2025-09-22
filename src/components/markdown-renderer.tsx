@@ -19,7 +19,6 @@ export function MarkdownRenderer({ content }: { content: string }) {
       <ReactMarkdown
         components={{
           code: ({
-            node: _node,
             inline = false,
             className = '',
             children,

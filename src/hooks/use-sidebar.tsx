@@ -32,27 +32,22 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       const mobile = window.innerWidth < 768
       setIsMobile(prevIsMobile => {
         if (prevIsMobile !== mobile) {
-          return mobile
+          if (mobile) {
+            setIsOpen(false);
+          }
+          return mobile;
         }
-        return prevIsMobile
+        return prevIsMobile;
       })
-      
-      // On mobile, close the sidebar when resizing to mobile
-      if (mobile && isOpen) {
-        setIsOpen(false)
-      }
-      // On desktop, ensure sidebar is open when resizing from mobile
-      if (!mobile && !isOpen) {
-        setIsOpen(true)
-      }
     }
 
+    handleResize()
     window.addEventListener('resize', handleResize)
     
     return () => {
       window.removeEventListener('resize', handleResize)
     }
-  }, [])
+  }, [isOpen])
 
   // Save to localStorage when isOpen changes
   useEffect(() => {

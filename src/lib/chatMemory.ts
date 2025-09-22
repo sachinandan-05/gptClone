@@ -1,5 +1,5 @@
 import mem0 from './mem0';
-import type { MemoryItem, MemoryMessage, MemoryResult } from './types/mem0';
+import type { MemoryResult } from './types/mem0';
 
 export type MessageRole = 'user' | 'assistant' | 'system';
 
@@ -17,7 +17,7 @@ export interface ChatMemory {
 
 // Helper to serialize/deserialize dates
 const serializeMemory = (memory: ChatMemory): string => {
-  return JSON.stringify(memory, (key, value) => 
+  return JSON.stringify(memory, (_, value) => 
     value instanceof Date ? value.toISOString() : value
   );
 };
