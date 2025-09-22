@@ -5,9 +5,12 @@ import * as React from "react"
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 import { cn } from "@/lib/utils"
 
-interface ScrollAreaProps extends React.ComponentProps<typeof ScrollAreaPrimitive.Root> {}
+interface ScrollAreaProps extends React.ComponentPropsWithRef<typeof ScrollAreaPrimitive.Root> {
+  className?: string;
+  children: React.ReactNode;
+}
 
-export const ScrollArea: React.FC<ScrollAreaProps> = ({ className, children, ...props }) => {
+export const ScrollArea = ({ className, children, ...props }: ScrollAreaProps) => {
   return (
     <ScrollAreaPrimitive.Root
       className={cn("relative overflow-auto w-full h-full", className)}

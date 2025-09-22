@@ -3,17 +3,19 @@ export interface MemoryMessage {
   content: string;
 }
 
+export type MetadataValue = string | number | boolean | null | undefined | MetadataValue[] | { [key: string]: MetadataValue };
+
 export interface MemoryMetadata {
   chatId: string;
   type: string;
   memoryKey: string;
-  [key: string]: any;
+  [key: string]: MetadataValue;
 }
 
 export interface MemoryOptions {
   userId: string;
   metadata?: MemoryMetadata | string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface MemoryItem {
@@ -28,7 +30,7 @@ export interface MemoryItem {
 export interface MemorySearchOptions {
   userId: string;
   limit?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MemoryResult {
@@ -44,7 +46,7 @@ export interface MemoryUpdateOptions extends MemoryOptions {
   id: string;
 }
 
-export interface MemoryAddOptions extends MemoryOptions {}
+export type MemoryAddOptions = MemoryOptions;
 
 export interface MemoryGetOptions {
   userId: string;

@@ -1,19 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { Message as MessageModel } from '@/models/message';
 import Chat from '@/models/chat';
 import dbConnect from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
+type RouteContext = {
+  params: { id: string } | Promise<{ id: string }>;
+};
+
+interface RouteParams {
+  params: {
+    id: string;
+  };
+}
+
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  request: NextRequest,
+  context: RouteContext
+): Promise<Response> {
   const { userId } = await auth();
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
+  const params = await Promise.resolve(context.params);
   const chatId = params.id;
   if (!chatId) {
     return new NextResponse('Chat ID is required', { status: 400 });
@@ -41,14 +52,15 @@ export async function GET(
 }
 
 export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  request: NextRequest,
+  context: RouteContext
+): Promise<Response> {
   const { userId } = await auth();
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
+  const params = await Promise.resolve(context.params);
   const chatId = params.id;
   if (!chatId) {
     return new NextResponse('Chat ID is required', { status: 400 });
@@ -77,20 +89,21 @@ export async function DELETE(
 }
 
 export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  request: NextRequest,
+  context: RouteContext
+): Promise<Response> {
   const { userId } = await auth();
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
+  const params = await Promise.resolve(context.params);
   const chatId = params.id;
   if (!chatId) {
     return new NextResponse('Chat ID is required', { status: 400 });
   }
 
-  const { title } = await req.json();
+  const { title } = await request.json();
   if (!title?.trim()) {
     return new NextResponse('Title is required', { status: 400 });
   }

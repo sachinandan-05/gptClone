@@ -48,11 +48,21 @@ const chatSchema = new Schema<IChat>(
     toJSON: { 
       virtuals: true, 
       getters: true,
-      transform: function(doc: any, ret: any) {
-        ret.id = ret._id;
-        if ('_id' in ret) delete ret._id;
-        if ('__v' in ret) delete ret.__v;
-        return ret;
+      transform: function(doc: mongoose.Document, ret: Record<string, unknown>) {
+        const transformed: Record<string, unknown> = { ...ret };
+        
+        // Convert _id to id and remove _id
+        if (transformed._id && typeof transformed._id === 'object' && '_id' in transformed) {
+          transformed.id = transformed._id.toString();
+          delete transformed._id;
+        }
+        
+        // Remove __v
+        if ('__v' in transformed) {
+          delete transformed.__v;
+        }
+        
+        return transformed;
       }
     },
     toObject: { 

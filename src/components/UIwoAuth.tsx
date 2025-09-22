@@ -293,7 +293,7 @@ export default function UIwoAuth() {
             />
             {hasReachedLimit && (
               <p className="mt-2 text-center text-sm text-gray-400">
-                You've reached {GUEST_MESSAGE_LIMIT} messages.{" "}
+                You&#39;ve reached {GUEST_MESSAGE_LIMIT} messages. {" "}
                 <Button variant="link" onClick={() => openSignIn()} className="text-blue-400 hover:underline p-0 h-auto">
                   Sign up
                 </Button>{" "}
@@ -311,7 +311,7 @@ export default function UIwoAuth() {
                 Message Limit Reached
               </DialogTitle>
               <DialogDescription className="text-center text-gray-300">
-                You've used all {GUEST_MESSAGE_LIMIT} free messages. Sign up to continue without limits!
+                You&apos;ve used all {GUEST_MESSAGE_LIMIT} free messages. Sign up to continue without limits!
                 <div className="flex flex-col space-y-3 mt-4">
                   <Button onClick={() => openSignIn()} className="w-full bg-white text-black hover:bg-gray-100">
                     Sign Up for Free

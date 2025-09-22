@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import React, { useState, ReactNode } from 'react';
+import ReactMarkdown, { Components } from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { Copy, Check } from 'lucide-react';
 
 interface CodeBlockProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   language: string;
+  [key: string]: unknown;
 }
 
-function CodeBlock({ children, className, language, ...props }: CodeBlockProps) {
+function CodeBlock({ children, className = '', language, ...props }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -92,107 +93,119 @@ function CodeBlock({ children, className, language, ...props }: CodeBlockProps) 
   );
 }
 
-export function MarkdownRenderer({ content }: { content: string }) {
+interface MarkdownRendererProps {
+  content: string;
+}
+
+interface CodeProps {
+  node?: any;
+  inline?: boolean;
+  className?: string;
+  children?: ReactNode;
+  [key: string]: any;
+}
+
+export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+  const components: Components = {
+    code({ node, inline, className, children, ...props }: CodeProps) {
+      const match = /language-(\w+)/.exec(className || '');
+      const language = match ? match[1] : '';
+      
+      return !inline && (match || String(children).includes('\n')) ? (
+        <CodeBlock 
+          language={language}
+          className={className}
+          {...props}
+        >
+          {children}
+        </CodeBlock>
+      ) : (
+        <code 
+          className="bg-gray-800 text-gray-200 px-1.5 py-0.5 rounded text-sm font-mono"
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    },
+    h1: (props) => (
+      <h1 className="text-2xl font-bold text-white mb-4 mt-6 first:mt-0" {...props}>
+        {props.children}
+      </h1>
+    ),
+    h2: (props) => (
+      <h2 className="text-xl font-semibold text-white mb-3 mt-5" {...props}>
+        {props.children}
+      </h2>
+    ),
+    h3: (props) => (
+      <h3 className="text-lg font-medium text-white mb-2 mt-4" {...props}>
+        {props.children}
+      </h3>
+    ),
+    p: (props) => (
+      <p className="text-gray-200 leading-relaxed mb-4" {...props}>
+        {props.children}
+      </p>
+    ),
+    ul: (props) => (
+      <ul className="list-disc list-inside text-gray-200 mb-4 space-y-1" {...props}>
+        {props.children}
+      </ul>
+    ),
+    ol: (props) => (
+      <ol className="list-decimal list-inside text-gray-200 mb-4 space-y-1" {...props}>
+        {props.children}
+      </ol>
+    ),
+    li: (props) => (
+      <li className="text-gray-200" {...props}>
+        {props.children}
+      </li>
+    ),
+    blockquote: (props) => (
+      <blockquote className="border-l-4 border-gray-600 pl-4 italic text-gray-300 my-4" {...props}>
+        {props.children}
+      </blockquote>
+    ),
+    a: ({ href, children, ...props }) => (
+      <a 
+        href={href} 
+        className="text-blue-400 hover:text-blue-300 underline"
+        target="_blank" 
+        rel="noopener noreferrer"
+        {...props}
+      >
+        {children}
+      </a>
+    ),
+    table: (props) => (
+      <div className="overflow-x-auto my-4">
+        <table className="min-w-full border border-gray-600 rounded-lg" {...props}>
+          {props.children}
+        </table>
+      </div>
+    ),
+    thead: (props) => (
+      <thead className="bg-gray-800" {...props}>
+        {props.children}
+      </thead>
+    ),
+    th: (props) => (
+      <th className="border border-gray-600 px-4 py-2 text-left text-gray-200 font-medium" {...props}>
+        {props.children}
+      </th>
+    ),
+    td: (props) => (
+      <td className="border border-gray-600 px-4 py-2 text-gray-200" {...props}>
+        {props.children}
+      </td>
+    )
+  };
+
   return (
     <div className="prose dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none">
-      <ReactMarkdown
-        components={{
-          code({ node, inline, className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '');
-            const language = match ? match[1] : '';
-            
-            return !inline && (match || String(children).includes('\n')) ? (
-              <CodeBlock 
-                language={language}
-                className={className}
-                {...props}
-              >
-                {children}
-              </CodeBlock>
-            ) : (
-              <code 
-                className="bg-gray-800 text-gray-200 px-1.5 py-0.5 rounded text-sm font-mono"
-                {...props}
-              >
-                {children}
-              </code>
-            );
-          },
-          // Style other markdown elements for dark theme
-          h1: ({ children }) => (
-            <h1 className="text-2xl font-bold text-white mb-4 mt-6 first:mt-0">
-              {children}
-            </h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-xl font-semibold text-white mb-3 mt-5">
-              {children}
-            </h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-lg font-medium text-white mb-2 mt-4">
-              {children}
-            </h3>
-          ),
-          p: ({ children }) => (
-            <p className="text-gray-200 leading-relaxed mb-4">
-              {children}
-            </p>
-          ),
-          ul: ({ children }) => (
-            <ul className="list-disc list-inside text-gray-200 mb-4 space-y-1">
-              {children}
-            </ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="list-decimal list-inside text-gray-200 mb-4 space-y-1">
-              {children}
-            </ol>
-          ),
-          li: ({ children }) => (
-            <li className="text-gray-200">
-              {children}
-            </li>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-gray-600 pl-4 italic text-gray-300 my-4">
-              {children}
-            </blockquote>
-          ),
-          a: ({ href, children }) => (
-            <a 
-              href={href} 
-              className="text-blue-400 hover:text-blue-300 underline"
-              target="_blank" 
-              rel="noopener noreferrer"
-            >
-              {children}
-            </a>
-          ),
-          table: ({ children }) => (
-            <div className="overflow-x-auto my-4">
-              <table className="min-w-full border border-gray-600 rounded-lg">
-                {children}
-              </table>
-            </div>
-          ),
-          thead: ({ children }) => (
-            <thead className="bg-gray-800">
-              {children}
-            </thead>
-          ),
-          th: ({ children }) => (
-            <th className="border border-gray-600 px-4 py-2 text-left text-gray-200 font-medium">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="border border-gray-600 px-4 py-2 text-gray-200">
-              {children}
-            </td>
-          ),
-        }}
-      >
+      <ReactMarkdown components={components}>
         {content}
       </ReactMarkdown>
     </div>
