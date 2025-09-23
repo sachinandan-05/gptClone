@@ -362,8 +362,17 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         <ScrollArea className="h-full w-full">
           <div className="max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-6 space-y-6">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
-                how can i help you today?
+              <div className="flex flex-col items-center justify-center h-[65vh] text-center px-4">
+                <h1 className="mb-6 text-3xl sm:text-4xl font-semibold text-white">What's on the agenda today?</h1>
+                <div className="w-full max-w-4xl">
+                  <ChatInput
+                    input={input}
+                    onInputChange={setInput}
+                    onSendMessage={handleSendMessage}
+                    isLoading={isLoading}
+                    variant="heroSingle"
+                  />
+                </div>
               </div>
             ) : (
               <>
@@ -458,16 +467,18 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         </ScrollArea>
         </div>
 
-        <div className="w-full">
-          <div className="w-full max-w-3xl mx-auto px-4 sm:px-6">
-            <ChatInput
-              input={input}
-              onInputChange={setInput}
-              onSendMessage={handleSendMessage}
-              isLoading={isLoading}
-            />
+        {messages.length > 0 && (
+          <div className="w-full">
+            <div className="w-full max-w-3xl mx-auto px-4 sm:px-6">
+              <ChatInput
+                input={input}
+                onInputChange={setInput}
+                onSendMessage={handleSendMessage}
+                isLoading={isLoading}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

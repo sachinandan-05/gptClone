@@ -303,7 +303,7 @@ export default function UIwoAuth() {
             <div className="w-8 h-8 text-white rounded-sm flex items-center justify-center">
              <img src="image.png" alt="" className="w-full h-full object-cover filter brightness-0 invert"/>
             </div>
-            <span className="text-lg font-medium">ChatGPT</span>
+            <span className="text-lg font-medium"></span>
           </div>
           <div className="flex items-center space-x-3">
             {!isSignedIn && (
@@ -324,8 +324,27 @@ export default function UIwoAuth() {
         <ScrollArea className="flex-1">
           <div className="max-w-3xl mx-auto w-full px-4 py-6 space-y-6">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
-                How can I help you today?
+              <div className="flex flex-col items-center justify-center h-[65vh] text-center px-4">
+                <h1 className="mb-6 text-3xl sm:text-4xl font-semibold text-white">ChatGPT</h1>
+                <div className="w-full max-w-3xl">
+                  <ChatInput
+                    input={input}
+                    onInputChange={setInput}
+                    onSendMessage={handleSendMessage}
+                    isLoading={isLoading}
+                    disabled={hasReachedLimit}
+                    variant="hero"
+                  />
+                  {hasReachedLimit && (
+                    <p className="mt-2 text-center text-sm text-gray-400">
+                      You&#39;ve reached {GUEST_MESSAGE_LIMIT} messages. {" "}
+                      <Button variant="link" onClick={() => openSignIn()} className="text-blue-400 hover:underline p-0 h-auto">
+                        Sign up
+                      </Button>{" "}
+                      to continue chatting.
+                    </p>
+                  )}
+                </div>
               </div>
             ) : (
               messages.map((message) => (
@@ -419,27 +438,29 @@ export default function UIwoAuth() {
           </div>
         </ScrollArea>
 
-        {/* Input */}
-        <div className="p-4">
-          <div className="max-w-3xl mx-auto">
-            <ChatInput
-              input={input}
-              onInputChange={setInput}
-              onSendMessage={handleSendMessage}
-              isLoading={isLoading}
-              disabled={hasReachedLimit}
-            />
-            {hasReachedLimit && (
-              <p className="mt-2 text-center text-sm text-gray-400">
-                You&#39;ve reached {GUEST_MESSAGE_LIMIT} messages. {" "}
-                <Button variant="link" onClick={() => openSignIn()} className="text-blue-400 hover:underline p-0 h-auto">
-                  Sign up
-                </Button>{" "}
-                to continue chatting.
-              </p>
-            )}
+        {/* Input at bottom once conversation has started */}
+        {messages.length > 0 && (
+          <div className="p-4">
+            <div className="max-w-3xl mx-auto">
+              <ChatInput
+                input={input}
+                onInputChange={setInput}
+                onSendMessage={handleSendMessage}
+                isLoading={isLoading}
+                disabled={hasReachedLimit}
+              />
+              {hasReachedLimit && (
+                <p className="mt-2 text-center text-sm text-gray-400">
+                  You&#39;ve reached {GUEST_MESSAGE_LIMIT} messages. {" "}
+                  <Button variant="link" onClick={() => openSignIn()} className="text-blue-400 hover:underline p-0 h-auto">
+                    Sign up
+                  </Button>{" "}
+                  to continue chatting.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Upgrade Modal */}
         <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>

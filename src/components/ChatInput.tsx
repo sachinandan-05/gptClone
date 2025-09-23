@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Paperclip, Send, Mic, Plus, X, Loader2 } from "lucide-react"
+import { Paperclip, Send, Mic, X, Loader2, Globe, Plus, AudioLines } from "lucide-react"
 // Remove sonner toast for now to avoid dependency issues
 
 interface ChatInputProps {
@@ -12,6 +12,7 @@ interface ChatInputProps {
   onSendMessage?: (content: string, fileUrl?: string, fileType?: 'image' | 'document' | 'video' | 'audio' | 'other') => void
   onFileUpload?: (files: FileList | null) => void
   className?: string
+  variant?: 'default' | 'hero' | 'heroSingle'
 }
 
 const ALLOWED_FILE_TYPES = [
@@ -37,7 +38,8 @@ export default function ChatInput({
   onInputChange,
   onSendMessage,
   onFileUpload,
-  className = ''
+  className = '',
+  variant = 'default'
 }: ChatInputProps) {
   const [internalInput, setInternalInput] = useState(externalInput || "")
   const [isUploading, setIsUploading] = useState(false)
@@ -255,7 +257,7 @@ export default function ChatInput({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-1 px-2 sm:px-4">
+    <div className={`w-full max-w-4xl mx-auto ${(variant === 'hero' || variant === 'heroSingle') ? 'px-2 sm:px-4' : 'p-1 px-2 sm:px-4'}`}>
       {/* File Preview */}
       {previewUrl && selectedFile?.type.startsWith('image/') && (
         <div className="relative mb-2 w-full max-w-3xl mx-auto">
@@ -300,7 +302,13 @@ export default function ChatInput({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative bg-[#303030] rounded-3xl shadow-lg w-full max-w-3xl mx-auto px-2 py-1.5 sm:px-3 sm:py-2 flex items-end ${
+        className={`relative w-full max-w-3xl mx-auto ${
+          variant === 'hero'
+            ? 'bg-[#2f2f2f] rounded-[28px] shadow-2xl border border-white/5 px-4 py-4 sm:px-5 sm:py-4'
+            : variant === 'heroSingle'
+            ? 'bg-[#2f2f2f] rounded-[28px] shadow-2xl border border-white/5 px-3 sm:px-4 py-2 sm:py-3 flex items-center'
+            : 'bg-[#303030] rounded-3xl shadow-lg px-2 py-1.5 sm:px-3 sm:py-2 flex items-end'
+        } ${
           isDragging ? 'ring-2 ring-blue-500' : ''
         }`}
       >
@@ -312,67 +320,165 @@ export default function ChatInput({
           className="hidden"
           accept={ALLOWED_FILE_TYPES.join(',')}
         />
-        
-        {/* Plus/Add Button */}
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading || disabled || isUploading}
-          className="flex-shrink-0 p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Attach file"
-        >
-          {isUploading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <Paperclip className="w-5 h-5" />
-          )}
-        </button>
-
-        {/* Text Input Area */}
-        <div className="flex-1 px-2">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => {
-              handleInputChange(e.target.value)
-              adjustTextareaHeight()
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask anything"
-            disabled={isLoading}
-            className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-sm sm:text-base leading-6 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-track-transparent pr-1"
-            rows={1}
-          />
-        </div>
-
-        {/* Right Side Icons */}
-        <div className="flex items-center gap-2 flex-shrink-0 pb-1">
-          <button
-            type="button"
-            className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading || disabled || isUploading}
-            aria-label="Voice input"
-          >
-            <Mic className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={isLoading || disabled || isUploading || (!input?.trim() && !selectedFile)}
-            className={`p-1.5 sm:p-2 text-white rounded-full transition-colors ${
-              (input?.trim() || selectedFile) && !isLoading && !isUploading
-                ? 'bg-none hover:bg-gray-600'
-                : 'bg-none cursor-not-allowed'
-            }`}
-            aria-label="Send message"
-          >
-            {isLoading || isUploading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </button>
-        </div>
+        {variant === 'hero' ? (
+          <div className="w-full flex flex-col gap-3">
+            <div className="w-full px-1">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => {
+                  handleInputChange(e.target.value)
+                  adjustTextareaHeight()
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask anything"
+                disabled={isLoading}
+                className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-base sm:text-lg leading-6 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-track-transparent pr-1"
+                rows={1}
+              />
+            </div>
+            <div className="w-full flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading || disabled || isUploading}
+                  className="px-3 py-2 rounded-full border border-white/10 text-white/90 hover:border-white/20 transition-colors"
+                  aria-label="Attach file"
+                >
+                  <span className="flex items-center gap-2 text-sm"><Paperclip className="w-4 h-4" /> Attach</span>
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-2 rounded-full border border-white/10 text-white/90 hover:border-white/20 transition-colors"
+                  disabled
+                >
+                  <span className="flex items-center gap-2 text-sm"><Globe className="w-4 h-4" /> Search</span>
+                </button>
+              </div>
+              <button
+                type="button"
+                className="px-3 py-2 rounded-full border border-white/10 text-white/90 hover:border-white/20 transition-colors"
+                disabled={isLoading || disabled || isUploading}
+                aria-label="Voice input"
+              >
+                <span className="flex items-center gap-2 text-sm"><Mic className="w-4 h-4" /> Voice</span>
+              </button>
+            </div>
+          </div>
+        ) : variant === 'heroSingle' ? (
+          <>
+            {/* Left plus */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || disabled || isUploading}
+              className="mr-2 flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 border border-white/10 text-white/90 hover:border-white/20 flex items-center justify-center cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
+              aria-label="Attach"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            {/* Input */}
+            <div className="flex-1 px-2">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => {
+                  handleInputChange(e.target.value)
+                  adjustTextareaHeight()
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask anything"
+                disabled={isLoading}
+                className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-base sm:text-lg leading-6 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-track-transparent"
+                rows={1}
+              />
+            </div>
+            {/* Right icons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 border border-white/10 text-white/90 hover:border-white/20 flex items-center justify-center cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
+                disabled={isLoading || disabled || isUploading}
+                aria-label="Voice"
+              >
+                <Mic className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={isLoading || disabled || isUploading || (!input?.trim() && !selectedFile)}
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 border border-white/10 text-white/90 hover:border-white/20 flex items-center justify-center disabled:opacity-50 cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
+                aria-label="Send"
+              >
+                <AudioLines className="w-4 h-4" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Left controls */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading || disabled || isUploading}
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-600 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Attach file"
+              >
+                {isUploading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Paperclip className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            {/* Text Input Area */}
+            <div className="flex-1  px-2">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => {
+                  handleInputChange(e.target.value)
+                  adjustTextareaHeight()
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask anything"
+                disabled={isLoading}
+                className={`w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-sm sm:text-base leading-6 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-track-transparent pr-1`}
+                rows={1}
+              />
+            </div>
+            {/* Right Side Icons */}
+            <div className="flex items-center gap-2 flex-shrink-0 pb-1">
+              <button
+                type="button"
+                className="p-1.5 sm:p-2 rounded-full hover:bg-gray-600 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || disabled || isUploading}
+                aria-label="Voice input"
+              >
+                <Mic className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={isLoading || disabled || isUploading || (!input?.trim() && !selectedFile)}
+                className={`p-1.5 sm:p-2 text-white rounded-full transition-colors ${
+                  (input?.trim() || selectedFile) && !isLoading && !isUploading
+                    ? 'bg-none hover:bg-gray-600'
+                    : 'bg-none cursor-not-allowed'
+                }`}
+                aria-label="Send message"
+              >
+                {isLoading || isUploading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          </>
+        )}
     </div>
     </div>
   )
