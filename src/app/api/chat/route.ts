@@ -199,7 +199,7 @@ export async function POST(req: NextRequest) {
           });
 
           // Call OpenAI / OpenRouter (streaming)
-          let aiStream;
+          let aiStream: AsyncIterable<any> | undefined;
           if (hasOpenAI) {
             try {
               aiStream = await openai.chat.completions.create({
@@ -221,6 +221,17 @@ export async function POST(req: NextRequest) {
               max_tokens: 1000,
               temperature: 0.7,
             });
+          }
+
+          // If no provider produced a stream, end gracefully
+          if (!aiStream) {
+            await writer.write(
+              encoder.encode(
+                `data: ${JSON.stringify({ error: 'LLM provider unavailable' })}\n\n`
+              )
+            );
+            await writer.write(encoder.encode("data: [DONE]\n\n"));
+            return;
           }
 
           for await (const chunk of aiStream) {
