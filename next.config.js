@@ -1,7 +1,6 @@
-import type { NextConfig } from "next";
 import path from "path";
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
