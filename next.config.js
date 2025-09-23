@@ -11,7 +11,9 @@ const nextConfig = {
   poweredByHeader: false,
   
   // For Vercel deployment
-  assetPrefix: process.env.NODE_ENV === 'production' ? 'https://gpt-clone-pxtt.vercel.app' : '',
+  assetPrefix: process.env.NEXT_PUBLIC_VERCEL_URL
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+    : '',
   
   // Enable static HTML export
   trailingSlash: true,
