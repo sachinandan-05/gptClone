@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, User, Sidebar as SidebarIcon, Dot, Paperclip,  Loader, Copy, SquarePen, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Navbar from './Navbar';
 import ChatInput from './ChatInput';
 import { Sidebar} from './Sidebar';
@@ -412,12 +413,14 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
             ) : (
               <>
                 {visibleMessages.map((message) => (
-                  <div
+                  <div 
                     key={message.id}
-                    className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
+                    className={`group flex flex-col ${message.role === 'assistant' ? 'items-start' : 'items-end'}`}
                   >
                     <div
-                      className={`group relative max-w-[calc(100%-2rem)] sm:max-w-[80%] rounded-lg px-4 py-1 ${message.role === 'user' ? 'bg-[#303030]' : 'bg-none'}`}
+                      className={`relative max-w-[calc(100%-2rem)] sm:max-w-[80%] rounded-lg px-4 break-words overflow-x-hidden ${
+                        message.role === 'user' ? 'bg-[#303030] py-' : 'bg-none '
+                      } ${message.role === 'user' ? 'shadow-[0_8px_30px_rgba(0,0,0,0.2)]' : ''}`}
                     >
                       {message.fileUrl && message.fileType === 'image' && (
                         <div className="mb-2">
@@ -452,56 +455,49 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                           <div className="flex items-center gap-3 text-sm">
                             <button
                               onClick={() => saveEditAndRegenerate(message.id)}
-                              className="p-1.5 rounded-md bg-white text-black"
+                              className="p-1.5 rounded-md bg-white text-black hover:bg-gray-100"
                               aria-label="Send"
                             >
                               <Send className="w-4 h-4" />
                             </button>
-                            <button onClick={cancelEdit} className="px-3 py-1 border border-gray-600 rounded-md">Cancel</button>
+                            <Button variant="outline" onClick={cancelEdit} className="border border-gray-600 bg-transparent text-white hover:bg-gray-800 px-3 py-1 h-auto">Cancel</Button>
                           </div>
                         </div>
                       ) : (
-                        <div className="relative">
-                          {message.content && <MarkdownRenderer content={message.content} />}
-                          
-                          {/* Hover UI positioned below the message bubble */}
-                          {message.role === 'user' && (
-                            <div className="absolute -bottom-10 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => navigator.clipboard.writeText(message.content)}
-                                  className="p-2 rounded-lg bg-[#424242] hover:bg-[#525252] transition-colors cursor-pointer"
-                                  aria-label="Copy message"
-                                  title="Copy"
-                                >
-                                  <Copy className="w-4 h-4 text-white" />
-                                </button>
-                                <button
-                                  onClick={() => startEdit(message)}
-                                  className="p-2 rounded-lg bg-[#424242] hover:bg-[#525252] transition-colors cursor-pointer"
-                                  aria-label="Edit message"
-                                  title="Edit message"
-                                >
-                                  <SquarePen className="w-4 h-4 text-white" />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* For assistant messages, keep the simple inline style */}
-                          {message.role === 'assistant' && (
-                            <div className="mt-1 flex gap-3 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => navigator.clipboard.writeText(message.content)}
-                                className="flex items-center gap-1 hover:text-white"
-                                aria-label="Copy message"
-                                title="Copy"
-                              >
-                                <Copy className="w-4 h-4" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        <MarkdownRenderer content={message.content} />
+                      )}
+                    </div>
+                    
+                    {/* Action buttons outside the bubble */}
+                    <div className={`flex gap-2 mt-1 ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
+                      {message.role === 'user' ? (
+                        <>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(message.content)}
+                            className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                            aria-label="Copy message"
+                            title="Copy"
+                          >
+                            <Copy className="w-4 h-4 text-white" />
+                          </button>
+                          <button
+                            onClick={() => startEdit(message)}
+                            className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                            aria-label="Edit message"
+                            title="Edit"
+                          >
+                            <SquarePen className="w-4 h-4 text-white" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => navigator.clipboard.writeText(message.content)}
+                          className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                          aria-label="Copy message"
+                          title="Copy"
+                        >
+                          <Copy className="w-4 h-4 text-white" />
+                        </button>
                       )}
                     </div>
                   </div>

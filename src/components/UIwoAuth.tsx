@@ -348,14 +348,14 @@ export default function UIwoAuth() {
               </div>
             ) : (
               messages.map((message) => (
-                <div
+                <div 
                   key={message.id}
-                  className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
+                  className={`group flex flex-col ${message.role === 'assistant' ? 'items-start' : 'items-end'} mb-[23.5px]`}
                 >
                   <div
                     className={`group relative max-w-[80%] rounded-lg px-4 py-3 break-words overflow-x-hidden ${
                       message.role === 'user' ? 'bg-[#303030]' : 'bg-none'
-                    }`}
+                    } ${message.role === 'user' ? 'shadow-[0_8px_30px_rgba(0,0,0,0.2)]' : ''}`}
                   >
                     {message.fileUrl && message.fileType?.startsWith('image/') && (
                       <div className="mb-2">
@@ -399,29 +399,40 @@ export default function UIwoAuth() {
                         </div>
                       </div>
                     ) : (
+                      <MarkdownRenderer content={message.content} />
+                    )}
+                  </div>
+                  
+                  {/* Action buttons outside the bubble */}
+                  <div className={`flex gap-2 mt-1 ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
+                    {message.role === 'user' ? (
                       <>
-                        <MarkdownRenderer content={message.content} />
-                        <div className="mt-1 flex gap-3 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => navigator.clipboard.writeText(message.content)}
-                            className="flex items-center gap-1 hover:text-white"
-                            aria-label="Copy message"
-                            title="Copy"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          {message.role === 'user' && (
-                            <button
-                              onClick={() => startEdit(message)}
-                              className="flex items-center gap-1 hover:text-white"
-                              aria-label="Edit message"
-                              title="Edit"
-                            >
-                              <SquarePen className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(message.content)}
+                          className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                          aria-label="Copy message"
+                          title="Copy"
+                        >
+                          <Copy className="w-4 h-4 text-white" />
+                        </button>
+                        <button
+                          onClick={() => startEdit(message)}
+                          className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                          aria-label="Edit message"
+                          title="Edit"
+                        >
+                          <SquarePen className="w-4 h-4 text-white" />
+                        </button>
                       </>
+                    ) : (
+                      <button
+                        onClick={() => navigator.clipboard.writeText(message.content)}
+                        className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                        aria-label="Copy message"
+                        title="Copy"
+                      >
+                        <Copy className="w-4 h-4 text-white" />
+                      </button>
                     )}
                   </div>
                 </div>
