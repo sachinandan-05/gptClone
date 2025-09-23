@@ -10,6 +10,26 @@
     {
       "src": "/(.*)",
       "dest": "/"
+    },
+    {
+      "src": "/_next/static/(.*)",
+      "dest": "/_next/static/$1"
+    },
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "status": 308,
+      "headers": { "Location": "/" }
     }
+  ],
+  "rewrites": [
+    { "source": "/:path*", "destination": "/" }
   ]
 }
