@@ -10,13 +10,6 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   
-  // For Vercel deployment - using relative paths for local development
-  assetPrefix: process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_VERCEL_URL 
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : '',
-  
-  // Enable static HTML export
-  trailingSlash: true,
   
   // Disable ESLint during build
   eslint: {
@@ -30,7 +23,7 @@ const nextConfig = {
   
   // Image optimization configuration
   images: {
-    unoptimized: true, // Required for static exports
+    unoptimized: true, // Keep unoptimized if you rely on static export elsewhere
     domains: [
       'images.unsplash.com',
       'oaidalleapiprodscus.blob.core.windows.net',

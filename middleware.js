@@ -19,7 +19,7 @@ const staticPaths = [
   '/robots.txt',
 ];
 
-// List of file extensions to handle as static files
+// File extensions to bypass middleware
 const staticExtensions = [
   '.js',
   '.css',
@@ -35,15 +35,15 @@ const staticExtensions = [
   '.eot',
   '.webp',
   '.map',
-  '.mp4', 
-  '.webm', 
-  '.ogg', 
-  '.pdf', 
-  '.doc', 
-  '.docx', 
-  '.xls', 
-  '.xlsx', 
-  '.ppt', 
+  '.mp4',
+  '.webm',
+  '.ogg',
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
   '.pptx'
 ];
 
@@ -74,25 +74,9 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(signInUrl);
   }
 
-  // Add security headers to all responses
-  const response = NextResponse.next();
-  
-  // Security headers
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  
-  // Cache control for static assets
-  if (staticExtensions.some(ext => pathname.endsWith(ext))) {
-    response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-  }
-  
-  return response;
+  return NextResponse.next();
 });
 
-// Only run middleware on specific paths
 export const config = {
   matcher: [
     // Skip all internal paths and static files
