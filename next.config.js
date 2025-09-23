@@ -10,8 +10,8 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   
-  // For Vercel deployment
-  assetPrefix: process.env.NEXT_PUBLIC_VERCEL_URL
+  // For Vercel deployment - using relative paths for local development
+  assetPrefix: process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_VERCEL_URL 
     ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
     : '',
   

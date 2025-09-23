@@ -11,6 +11,9 @@ import "./globals.css";
 const inter = Inter({ 
   subsets: ['latin'],
   variable: '--font-sans',
+  display: 'swap',
+  preload: false,
+  adjustFontFallback: false
 });
 
 export const metadata: Metadata = {
