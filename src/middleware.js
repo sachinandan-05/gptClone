@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// Define routes that don't require authentication
+// Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/api/webhooks(.*)',
+  '/api/webhook(.*)',
+  '/api/trpc(.*)',
 ]);
 
 // List of static files and directories to bypass middleware
@@ -48,38 +48,24 @@ const staticExtensions = [
 ];
 
 export default clerkMiddleware(async (auth, req) => {
-  const { pathname } = req.nextUrl;
-
-  // Skip middleware for static files and API routes
-  if (
-    staticPaths.some(path => pathname.startsWith(path)) ||
-    staticExtensions.some(ext => pathname.endsWith(ext)) ||
-    pathname.startsWith('/api/') ||
-    pathname.includes('.')
-  ) {
-    return NextResponse.next();
-  }
-
-  // Handle public routes
+  // Allow access to public routes
   if (isPublicRoute(req)) {
-    return NextResponse.next();
+    return;
   }
-
-  // Handle authenticated routes
+  
+  // Otherwise, require authentication
   const { userId } = await auth();
   if (!userId) {
-    // Redirect to sign-in for unauthenticated users
     const signInUrl = new URL('/sign-in', req.url);
     signInUrl.searchParams.set('redirect_url', req.url);
-    return NextResponse.redirect(signInUrl);
+    return Response.redirect(signInUrl);
   }
-
-  return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    // Skip all internal paths and static files
-    '/((?!_next/static|_next/image|favicon.ico|static/|api/|.*\..*$).*)',
+    // Skip static files and API routes
+    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/(api|trpc)(.*)'
   ],
 };
