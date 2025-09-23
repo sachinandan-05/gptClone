@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     await dbConnect();
 
     const body = await req.json();
-    const { messages = [], chatId } = body;
+    const { messages = [], chatId, regenerateFromIndex, editedContent } = body as any;
     const userMessage = messages[messages.length - 1];
     const shouldStream =
       req.headers.get("accept")?.includes("text/event-stream") || body.stream === true;
@@ -83,6 +83,35 @@ export async function POST(req: NextRequest) {
           },
           { status: 429 }
         );
+      }
+    }
+
+    // --- Regeneration handling: if editing an earlier user message ---
+    if (typeof regenerateFromIndex === 'number' && regenerateFromIndex >= 0 && Array.isArray(messages) && chatId) {
+      try {
+        // Find the corresponding DB message for that index.
+        // We assume Chat.messages holds message ObjectIds in chronological order.
+        const chatDoc = await Chat.findById(chatId).select('messages').lean();
+        if (chatDoc && Array.isArray(chatDoc.messages) && chatDoc.messages.length > regenerateFromIndex) {
+          const targetMsgId = chatDoc.messages[regenerateFromIndex];
+          const targetMsg = await MessageModel.findById(targetMsgId);
+          if (targetMsg && targetMsg.role === 'user') {
+            if (typeof editedContent === 'string' && editedContent.trim()) {
+              targetMsg.content = editedContent.trim();
+              await targetMsg.save();
+            }
+            // Remove trailing messages after the edited one
+            const trailingIds = chatDoc.messages.slice(regenerateFromIndex + 1);
+            if (trailingIds.length) {
+              await MessageModel.deleteMany({ _id: { $in: trailingIds } });
+              await Chat.findByIdAndUpdate(chatId, {
+                $set: { messages: chatDoc.messages.slice(0, regenerateFromIndex + 1), updatedAt: new Date() }
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Regeneration cleanup failed:', e);
       }
     }
 

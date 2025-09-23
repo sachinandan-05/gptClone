@@ -15,9 +15,20 @@ interface CodeProps extends React.HTMLAttributes<HTMLElement> {
 
 export function MarkdownRenderer({ content }: { content: string }) {
   return (
-    <div className="prose dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none">
+    <div className="prose dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none break-words whitespace-pre-wrap overflow-x-hidden ">
       <ReactMarkdown
         components={{
+          img: ({ ...props }) => (
+            <img
+              {...props as any}
+              style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
+            />
+          ),
+          a: ({ children, ...props }) => (
+            <a {...props as any} style={{ wordBreak: 'break-all' }}>
+              {children}
+            </a>
+          ),
           code: ({
             inline = false,
             className = '',
@@ -35,7 +46,11 @@ export function MarkdownRenderer({ content }: { content: string }) {
                   margin: 0,
                   borderRadius: '0.5rem',
                   backgroundColor: '#1e1e1e',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  overflowX: 'auto',
                 }}
+                wrapLongLines={true}
                 {...props}
               >
                 {Array.isArray(children) ? children.join('') : String(children).replace(/\n$/, '')}

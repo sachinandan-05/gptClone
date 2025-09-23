@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { CircleQuestionMark, Paperclip, HelpCircle } from "lucide-react";
+import { CircleQuestionMark, Paperclip, HelpCircle, Copy, SquarePen, Send } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -41,6 +41,8 @@ export default function UIwoAuth() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const GUEST_MESSAGE_LIMIT = 10;
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState<string>("");
 
   const hasReachedLimit = !isSignedIn && guestMessageCount >= GUEST_MESSAGE_LIMIT;
 
@@ -197,9 +199,95 @@ export default function UIwoAuth() {
     }
   };
 
+  const startEdit = (m: Message) => {
+    if (m.role !== 'user') return;
+    setEditingId(m.id);
+    setEditingText(m.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText("");
+  };
+
+  const saveEditAndRegenerate = async (messageId: string) => {
+    const idx = messages.findIndex(m => m.id === messageId);
+    if (idx === -1) return;
+
+    const updatedUser: Message = { ...messages[idx], content: editingText };
+    const trimmed = [...messages.slice(0, idx), updatedUser];
+    setMessages(trimmed);
+    setEditingId(null);
+    setEditingText("");
+
+    // stream new assistant reply from this point
+    try {
+      setIsLoading(true);
+      const headers: Record<string, string> = { "Content-Type": "application/json", Accept: 'text/event-stream' };
+      if (!isSignedIn) headers["x-guest-id"] = guestId;
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          messages: trimmed.map(m => ({ role: m.role, content: m.content })),
+          chatId: currentChatId,
+          stream: true,
+          regenerateFromIndex: idx,
+          editedContent: updatedUser.content,
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        try { const e = JSON.parse(text); throw new Error(e.message || e.error || text); }
+        catch { throw new Error(text); }
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessageContent = "";
+      let chatId = currentChatId;
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+          for (const line of lines) {
+            if (line === 'data: [DONE]') continue;
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.substring(6).trim());
+              if (data.chatId) { chatId = data.chatId; setCurrentChatId(chatId); continue; }
+              if (data.choices?.[0]?.delta?.content) {
+                assistantMessageContent += data.choices[0].delta.content;
+                setMessages(prev => {
+                  const existing = prev.find(m => m.role === 'assistant' && m.id === 'temp-assistant');
+                  if (existing) {
+                    return prev.map(m => m.id === 'temp-assistant' ? { ...m, content: assistantMessageContent } : m);
+                  } else {
+                    return [...prev, { id: 'temp-assistant', content: assistantMessageContent, role: 'assistant' as const, timestamp: new Date() }];
+                  }
+                });
+              }
+            } catch {}
+          }
+        }
+        // finalize
+        setMessages(prev => prev.map(m => m.id === 'temp-assistant' ? ({ id: Date.now().toString(), content: assistantMessageContent, role: 'assistant' as const, timestamp: new Date() }) : m));
+      }
+    } catch (e) {
+      console.error('Regenerate failed:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div 
-      className="flex flex-col h-screen bg-[#212121] text-white"
+      className="flex flex-col h-screen bg-[#212121] text-white overflow-x-hidden"
       style={{
         fontFamily: 'ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"',
         fontSize: '16px',
@@ -233,7 +321,7 @@ export default function UIwoAuth() {
         </div>
 
         {/* Chat messages */}
-        <ScrollArea className="flex-1 overflow-y-auto">
+        <ScrollArea className="flex-1">
           <div className="max-w-3xl mx-auto w-full px-4 py-6 space-y-6">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
@@ -246,7 +334,7 @@ export default function UIwoAuth() {
                   className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                    className={`max-w-[80%] rounded-lg px-4 py-3 break-words overflow-x-hidden ${
                       message.role === 'user' ? 'bg-[#303030]' : 'bg-none'
                     }`}
                   >
@@ -272,7 +360,50 @@ export default function UIwoAuth() {
                         </a>
                       </div>
                     )}
-                    <MarkdownRenderer content={message.content} />
+                    {editingId === message.id ? (
+                      <div className="mt-2 space-y-2">
+                        <textarea
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          className="w-full bg-[#2b2b2b] text-white rounded-md p-2"
+                          rows={3}
+                        />
+                        <div className="flex items-center gap-3 text-sm">
+                          <button
+                            onClick={() => saveEditAndRegenerate(message.id)}
+                            className="p-1.5 rounded-md bg-white text-black hover:bg-gray-100"
+                            aria-label="Send"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                          <Button variant="outline" onClick={cancelEdit} className="border border-gray-600 bg-transparent text-white hover:bg-gray-800 px-3 py-1 h-auto">Cancel</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <MarkdownRenderer content={message.content} />
+                        <div className="mt-1 flex gap-3 text-xs text-gray-400">
+                          <button
+                            onClick={() => navigator.clipboard.writeText(message.content)}
+                            className="flex items-center gap-1 hover:text-white"
+                            aria-label="Copy message"
+                            title="Copy"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          {message.role === 'user' && (
+                            <button
+                              onClick={() => startEdit(message)}
+                              className="flex items-center gap-1 hover:text-white"
+                              aria-label="Edit message"
+                              title="Edit"
+                            >
+                              <SquarePen className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               ))

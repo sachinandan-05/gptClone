@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Sidebar as SidebarIcon, Dot, Paperclip,  Loader } from "lucide-react";
+import { Bot, User, Sidebar as SidebarIcon, Dot, Paperclip,  Loader, Copy, SquarePen, Send } from "lucide-react";
 import Navbar from './Navbar';
 import ChatInput from './ChatInput';
 import { Sidebar} from './Sidebar';
@@ -57,6 +57,8 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
   const [showSidebar, setShowSidebar] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState<string>("");
 
   const toggleSidebarCollapse = () => {
     setIsCollapsed(!isCollapsed);
@@ -238,6 +240,94 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
     }
   };
 
+  // Edit + Regenerate handlers
+  const startEdit = (m: Message) => {
+    if (m.role !== 'user') return;
+    setEditingId(m.id);
+    setEditingText(m.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText("");
+  };
+
+  const saveEditAndRegenerate = async (messageId: string) => {
+    const idx = messages.findIndex(m => m.id === messageId);
+    if (idx === -1) return;
+
+    const updatedUser: Message = { ...messages[idx], content: editingText };
+    const trimmed = [...messages.slice(0, idx), updatedUser];
+    setMessages(trimmed);
+    setEditingId(null);
+    setEditingText("");
+
+    setIsLoading(true);
+
+    const assistantPlaceholder: Message = {
+      id: `assistant-${Date.now()}`,
+      content: '',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, assistantPlaceholder]);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+        body: JSON.stringify({
+          messages: trimmed.map(m => ({ role: m.role, content: m.content })),
+          chatId: currentChatId || undefined,
+          stream: true,
+          regenerateFromIndex: idx,
+          editedContent: updatedUser.content,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData || 'Failed to regenerate');
+      }
+      if (!response.body) throw new Error('No response body');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n\n').filter(line => line.trim() !== '');
+          for (const line of lines) {
+            if (line === 'data: [DONE]') continue;
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.substring(6));
+              if (data.chatId) { setCurrentChatId(data.chatId); continue; }
+              if (data.choices?.[0]?.delta?.content) {
+                const content = data.choices[0].delta.content;
+                assistantContent += content;
+                setMessages(prev => prev.map(msg => msg.id === assistantPlaceholder.id ? { ...msg, content: assistantContent } : msg));
+              }
+            } catch {}
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      setMessages(prev => prev.map(msg => msg.id === assistantPlaceholder.id ? { ...msg, id: `msg-${Date.now()}`, content: assistantContent } : msg));
+    } catch (err) {
+      console.error('Regenerate failed:', err);
+      setMessages(prev => prev.filter(m => m.id !== assistantPlaceholder.id));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <div 
@@ -307,7 +397,50 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                           </a>
                         </div>
                       )}
-                      {message.content && <MarkdownRenderer content={message.content} />}
+                      {editingId === message.id ? (
+                        <div className="mt-2 space-y-2">
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="w-full bg-[#2b2b2b] text-white rounded-md p-2"
+                            rows={3}
+                          />
+                          <div className="flex items-center gap-3 text-sm">
+                            <button
+                              onClick={() => saveEditAndRegenerate(message.id)}
+                              className="p-1.5 rounded-md bg-white text-black"
+                              aria-label="Send"
+                            >
+                              <Send className="w-4 h-4" />
+                            </button>
+                            <button onClick={cancelEdit} className="px-3 py-1 border border-gray-600 rounded-md">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {message.content && <MarkdownRenderer content={message.content} />}
+                          <div className="mt-1 flex gap-3 text-xs text-gray-400">
+                            <button
+                              onClick={() => navigator.clipboard.writeText(message.content)}
+                              className="flex items-center gap-1 hover:text-white"
+                              aria-label="Copy message"
+                              title="Copy"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            {message.role === 'user' && (
+                              <button
+                                onClick={() => startEdit(message)}
+                                className="flex items-center gap-1 hover:text-white"
+                                aria-label="Edit message"
+                                title="Edit"
+                              >
+                                <SquarePen className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
