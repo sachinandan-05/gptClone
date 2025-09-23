@@ -394,9 +394,9 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
           showSidebar={showSidebar}
           setShowSidebar={setShowSidebar}
         />
-        <div className=" lg:w-full w-[500px] overflow-hidden">
-        <ScrollArea className="h-full lg:w-full w-[500px] scroll-x-none ">
-          <div className="max-w-3xl mx-auto w-full min-w-0  sm:px-6 py-6 space-y-6">
+        <div className="flex-1 w-full overflow-hidden">
+        <ScrollArea className="h-full w-full">
+          <div className="max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-6 space-y-6">
             {isEmptyLike ? (
               <div className="flex flex-col items-center justify-center h-[65vh] text-center px-4">
                 <h1 className="mb-6 text-3xl sm:text-4xl font-semibold text-white">What's on the agenda today?</h1>
@@ -411,11 +411,11 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                 </div>
               </div>
             ) : (
-              <div className="lg:flex scroll-x-none flex-col h-full lg:w-full w-[500px] space-x-0  " >
+              <div className="flex flex-col h-full lg:w-full w-full space-x-6 " >
                 {visibleMessages.map((message) => (
                   <div 
                     key={message.id}
-                    className={`group flex flex-col lg:w-full w-[ 500px] scroll-x-none  ${message.role === 'assistant' ? 'items-start' : 'items-end pr-4'}`}
+                    className={`group flex flex-col lg:w-full w-[ 600px] ${message.role === 'assistant' ? 'items-start' : 'items-end'}`}
                   >
                     <div
                       className={`relative max-w-[calc(100%-2rem)] sm:max-w-[80%] rounded-lg px-4 break-words overflow-x-hidden ${
