@@ -17,37 +17,29 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     // Load saved state from localStorage
     const savedState = typeof window !== 'undefined' ? localStorage.getItem('sidebarOpen') : null
     const initialIsOpen = savedState ? JSON.parse(savedState) : !(window.innerWidth < 768)
-    
-    // Only set initial state if it's different to prevent unnecessary re-renders
-    if (isOpen !== initialIsOpen) {
-      setIsOpen(initialIsOpen)
-    }
-    
     const checkMobile = window.innerWidth < 768
-    if (isMobile !== checkMobile) {
-      setIsMobile(checkMobile)
-    }
+    
+    // Set initial states without conditions to prevent unnecessary re-renders
+    setIsOpen(prev => prev !== initialIsOpen ? initialIsOpen : prev)
+    setIsMobile(prev => prev !== checkMobile ? checkMobile : prev)
 
     const handleResize = () => {
       const mobile = window.innerWidth < 768
       setIsMobile(prevIsMobile => {
-        if (prevIsMobile !== mobile) {
-          if (mobile) {
-            setIsOpen(false);
-          }
-          return mobile;
+        if (prevIsMobile !== mobile && mobile) {
+          setIsOpen(false)
+          return mobile
         }
-        return prevIsMobile;
+        return prevIsMobile
       })
     }
 
-    handleResize()
     window.addEventListener('resize', handleResize)
     
     return () => {
       window.removeEventListener('resize', handleResize)
     }
-  }, [isOpen])
+  }, []) // Empty dependency array to run only on mount
 
   // Save to localStorage when isOpen changes
   useEffect(() => {
