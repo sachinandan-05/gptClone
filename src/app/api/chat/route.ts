@@ -14,284 +14,41 @@ import { TextEncoder } from 'util';
 
 const GUEST_MESSAGE_LIMIT = 10;
 
-// Initialize OpenAI clients
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const openrouter = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
-});
+// Initialize OpenAI clients with error handling
+let openai: OpenAI;
+let openrouter: OpenAI;
 
-// export async function POST(req: NextRequest) {
-//   const { userId } = await auth();
-//   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
+try {
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('OPENAI_API_KEY is not set');
+  } else {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
 
-//   try {
-//     const body = await req.json();
-//     const { messages = [], chatId } = body;
-//     const userMessage = messages[messages.length - 1];
-//     const shouldStream =
-//       req.headers.get('accept')?.includes('text/event-stream') || body.stream === true;
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.error('OPENROUTER_API_KEY is not set');
+  } else {
+    openrouter = new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+  }
+} catch (error) {
+  console.error('Failed to initialize OpenAI clients:', error);
+  throw error;
+}
 
-//     if (!userMessage?.content?.trim()) {
-//       return NextResponse.json({ error: 'No message content provided' }, { status: 400 });
-//     }
-
-//     await dbConnect();
-
-//     // Get relevant context from shared memory using search
-//     const contextMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-    
-//     if (userMessage?.content) {
-//       try {
-//         // Search for relevant context from previous conversations
-//         const relevantMemories = await mem0.search(userMessage.content, {
-//           user_id: userId,
-//           limit: 5
-//         });
-
-//         if (relevantMemories && Array.isArray(relevantMemories)) {
-//           for (const memory of relevantMemories.slice(0, 3)) { // Use top 3 most relevant memories
-//             if (memory.memory && typeof memory.memory === 'string') {
-//               // Add as context with a note that it's from previous conversation
-//               (contextMessages as Array<{ role: 'user' | 'assistant'; content: string }>).push({
-//                 role: 'assistant',
-//                 content: `[Previous context: ${memory.memory}]`
-//               });
-//             }
-//           }
-//         }
-//       } catch (searchError) {
-//         console.error('Error searching memories:', searchError);
-//         // Continue without context if search fails
-//       }
-//     }
-
-//     // Save current conversation to shared memory
-//     const currentMessages: ChatMessage[] = messages.map((m: Record<string, unknown>) => ({
-//       role: m.role as MessageRole,
-//       content: String(m.content),
-//       timestamp: new Date()
-//     }));
-
-//     // Save to shared memory (will create separate entries for each conversation)
-//     await saveChatMemory({
-//       chatId: chatId || 'new',
-//       userId,
-//       messages: currentMessages
-//     });
-
-//     // Format messages for OpenAI/OpenRouter including context
-//     const openAIMessages = [
-//       { role: 'system', content: 'You are a helpful AI assistant. Use any relevant context from previous conversations to provide better responses. Context from previous conversations is marked with [Previous context: ...].' },
-//       ...contextMessages, // Include relevant context from search
-//       ...messages
-//         .filter((m: Record<string, unknown>) => ['system', 'user', 'assistant'].includes(String(m.role)) && String(m.content)?.trim())
-//         .map((m: Record<string, unknown>) => ({ role: m.role, content: String(m.content) })),
-//     ];
-
-//     // If streaming requested
-//     if (shouldStream) {
-//       const stream = new TransformStream();
-//       const writer = stream.writable.getWriter();
-//       const encoder = new TextEncoder();
-
-//       (async () => {
-//         let currentChatId = chatId;
-//         let assistantReply = '';
-
-//         try {
-//           // Create chat if not exist
-//           if (!currentChatId) {
-//             const newChat = await Chat.create({
-//               userId,
-//               title:
-//                 userMessage.content.substring(0, 30) +
-//                 (userMessage.content.length > 30 ? '...' : ''),
-//               messages: [],
-//             });
-//             currentChatId = newChat._id.toString();
-
-//             await sendWebhook('chat.created', {
-//               chatId: currentChatId,
-//               userId,
-//               title: newChat.title,
-//             });
-
-//             await writer.write(
-//               encoder.encode(`data: ${JSON.stringify({ chatId: currentChatId })}\n\n`)
-//             );
-//           }
-
-//           // Save user message
-//           const userMsgDoc = await MessageModel.create({
-//             chatId: new mongoose.Types.ObjectId(currentChatId),
-//             userId,
-//             role: 'user',
-//             content: userMessage.content,
-//             timestamp: new Date(),
-//           });
-
-//           await Chat.findByIdAndUpdate(currentChatId, {
-//             $push: { messages: userMsgDoc._id },
-//             $set: { updatedAt: new Date() },
-//           });
-
-//           // Try OpenAI first, fallback to OpenRouter if it fails
-//           let openaiStream;
-//           try {
-//             openaiStream = await openai.chat.completions.create({
-//               model: 'gpt-4o',
-//               messages: openAIMessages,
-//               stream: true,
-//               max_tokens: 1000,
-//               temperature: 0.7,
-//             });
-//           } catch (error) {
-//             console.log('OpenAI API failed, falling back to OpenRouter...');
-//             openaiStream = await openrouter.chat.completions.create({
-//               model: 'openai/gpt-4o',
-//               messages: openAIMessages,
-//               stream: true,
-//               max_tokens: 1000,
-//               temperature: 0.7,
-//             });
-//           }
-
-//           for await (const chunk of openaiStream) {
-//             const content = chunk.choices[0]?.delta?.content;
-//             if (content) {
-//               assistantReply += content;
-//               await writer.write(
-//                 encoder.encode(
-//                   `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`
-//                 )
-//               );
-//             }
-//           }
-
-//           // Save assistant message
-//           if (assistantReply.trim()) {
-//             const assistantMsgDoc = await MessageModel.create({
-//               chatId: new mongoose.Types.ObjectId(currentChatId),
-//               userId,
-//               role: 'assistant',
-//               content: assistantReply,
-//               timestamp: new Date(),
-//             });
-
-//             await Chat.findByIdAndUpdate(currentChatId, {
-//               $push: { messages: assistantMsgDoc._id },
-//               $set: { updatedAt: new Date() },
-//             });
-
-//             // Update shared memory with the assistant's response
-//             const updatedMessages = [...currentMessages, {
-//               role: 'assistant' as MessageRole,
-//               content: assistantReply,
-//               timestamp: new Date()
-//             }];
-            
-//             await saveChatMemory({
-//               chatId: currentChatId,
-//               userId,
-//               messages: updatedMessages
-//             });
-//           }
-
-//           await writer.write(encoder.encode('data: [DONE]\n\n'));
-//         } catch (err) {
-//           // console.error('Streaming error:', err);
-//           await writer.write(
-//             encoder.encode(`data: ${JSON.stringify({ error: 'Error generating response' })}\n\n`)
-//           );
-//         } finally {
-//           await writer.close();
-//         }
-//       })();
-
-//       return new Response(stream.readable, {
-//         headers: {
-//           'Content-Type': 'text/event-stream',
-//           'Cache-Control': 'no-cache',
-//           Connection: 'keep-alive',
-//         },
-//       });
-//     }
-
-//     // Non-streaming fallback
-//     const response = await openrouter.chat.completions.create({
-//       model: 'openai/gpt-3.5-turbo',
-//       messages: openAIMessages,
-//       max_tokens: 1000,
-//       temperature: 0.7,
-//     });
-
-//     const aiResponse = response.choices[0]?.message?.content || '';
-
-//     // Save to DB
-//     let currentChatId = chatId;
-//     if (!currentChatId) {
-//       const newChat = await Chat.create({
-//         userId,
-//         title:
-//           userMessage.content.substring(0, 30) +
-//           (userMessage.content.length > 30 ? '...' : ''),
-//         messages: [],
-//       });
-//       currentChatId = newChat._id.toString();
-
-//       await sendWebhook('chat.created', {
-//         chatId: currentChatId,
-//         userId,
-//         title: newChat.title,
-//       });
-//     }
-
-//     // Save assistant message
-//     if (aiResponse.trim()) {
-//       const assistantMsgDoc = await MessageModel.create({
-//         chatId: new mongoose.Types.ObjectId(currentChatId),
-//         userId,
-//         role: 'assistant',
-//         content: aiResponse,
-//         timestamp: new Date(),
-//       });
-
-//       await Chat.findByIdAndUpdate(currentChatId, {
-//         $push: { messages: assistantMsgDoc._id },
-//         $set: { updatedAt: new Date() },
-//       });
-
-//       // Update shared memory with the assistant's response
-//       const updatedMessages = [...currentMessages, {
-//         role: 'assistant' as MessageRole,
-//         content: aiResponse,
-//         timestamp: new Date()
-//       }];
-      
-//       await saveChatMemory({
-//         chatId: currentChatId,
-//         userId,
-//         messages: updatedMessages
-//       });
-//     }
-
-//     return NextResponse.json({ response: aiResponse, chatId: currentChatId });
-//   } catch (error: any) {
-//     console.error('Chat API error:', error);
-//     const errorMessage = error.response?.data?.error?.message || error.message || 'Unknown error';
-//     return NextResponse.json(
-//       { error: 'Failed to generate response', details: errorMessage },
-//       { status: 500 }
-//     );
-//   }
-// }
 
 // GET: fetch chats or messages
 export async function POST(req: NextRequest) {
+  console.log('Chat API request received');
+  
   try {
-    const { userId } = await auth();
+    const authResult = await auth();
+    const userId = authResult?.userId;
     const isGuest = !userId;
+    
+    console.log(`Processing request for ${isGuest ? 'guest' : 'user'}: ${userId || 'N/A'}`);
 
     await dbConnect();
 
@@ -576,8 +333,23 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Chat API error:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      name: error?.name,
+      code: error?.code,
+      statusCode: error?.statusCode
+    });
+    
     return NextResponse.json(
-      { error: "Failed to generate response", details: error instanceof Error ? error.message : "Unknown error" },
+      { 
+        error: "Failed to process your request",
+        details: process.env.NODE_ENV === 'development' ? errorMessage : 'An unexpected error occurred',
+        requestId: req.headers.get('x-request-id') || 'unknown'
+      },
       { status: 500 }
     );
   }
