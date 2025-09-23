@@ -445,22 +445,44 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                         </div>
                       )}
                       {editingId === message.id ? (
-                        <div className="mt-2 space-y-2">
+                        <div className="w-full max-w-[850px] bg-[#2a2a2a] p-4  rounded-lg space-y-3 bg-[#303030]">
+                          <div className="relative bg-[#303030]">
                           <textarea
-                            value={editingText}
-                            onChange={(e) => setEditingText(e.target.value)}
-                            className="w-full bg-[#2b2b2b] text-white rounded-md p-2"
-                            rows={3}
-                          />
-                          <div className="flex items-center gap-3 text-sm">
-                            <button
-                              onClick={() => saveEditAndRegenerate(message.id)}
-                              className="p-1.5 rounded-md bg-white text-black hover:bg-gray-100"
-                              aria-label="Send"
+                  value={editingText}
+                  onChange={(e) => {
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${Math.min(e.target.scrollHeight, 500)}px`;
+                    setEditingText(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      saveEditAndRegenerate(message.id);
+                    }
+                  }}
+                  className="text-white p-4 resize overflow-y-auto border-0 focus:outline-none bg-[#303030] h-[300px] w-[520px] "
+                  style={{ maxHeight: '500px' }}
+                  placeholder="Ask anything..."
+                  autoFocus
+                />
+
+                          </div>
+                          <div className="flex justify-end items-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              onClick={cancelEdit} 
+                              className="h-9 px-4 py-2 text-sm font-medium text-white hover:bg-[#3a3a3a] border-[#4a4a4a] bg-transparent hover:border-[#5a5a5a] transition-colors rounded-full hover:cursor-pointer"
                             >
-                              <Send className="w-4 h-4" />
-                            </button>
-                            <Button variant="outline" onClick={cancelEdit} className="border border-gray-600 bg-transparent text-white hover:bg-gray-800 px-3 py-1 h-auto">Cancel</Button>
+                              Cancel
+                            </Button>
+                            <Button 
+                              onClick={() => saveEditAndRegenerate(message.id)}
+                              className="h-9 px-4 py-2 text-sm font-medium bg-white  text-black rounded-full transition-colors flex items-center gap-1.5  hover:cursor-pointer"
+                              disabled={!editingText.trim()}
+                            >
+                            
+                              Send
+                            </Button>
                           </div>
                         </div>
                       ) : (
