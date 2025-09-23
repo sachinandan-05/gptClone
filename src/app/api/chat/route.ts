@@ -115,27 +115,51 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // --- Build memory context (only for signed-in users) ---
+    // --- Build memory context (only for signed-in users), with strict relevance checks ---
     const contextMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
-    if (!isGuest && userMessage?.content) {
-      try {
-        const relevantMemories = await mem0.search(userMessage.content, {
-          user_id: userId,
-          limit: 5,
-        });
+    {
+      const contentText = String(userMessage?.content || "").trim();
+      const hasAttachment = Boolean(userMessage?.fileUrl);
+      const isGenericPrompt =
+        contentText.length < 12 || /^(explain|what\s+is\s+this|help|this|that)\b/i.test(contentText);
 
-        if (Array.isArray(relevantMemories)) {
-          for (const memory of relevantMemories.slice(0, 3)) {
-            if (memory.memory && typeof memory.memory === "string") {
-              contextMessages.push({
-                role: "assistant",
-                content: `[Previous context: ${memory.memory}]`,
-              });
-            }
+      if (!isGuest && contentText && !hasAttachment && !isGenericPrompt) {
+        try {
+          const relevantMemories = await mem0.search(contentText, {
+            user_id: userId,
+            limit: 5,
+          });
+
+          const stop = new Set([
+            "the","a","an","and","or","to","of","in","on","for","with","is","it","this","that","what","explain","please","help"
+          ]);
+          const userTokens = new Set(
+            contentText.toLowerCase().split(/\W+/).filter(t => t && !stop.has(t))
+          );
+
+          const filtered: string[] = Array.isArray(relevantMemories)
+            ? relevantMemories
+                .map((m: any) => m?.memory?.toString?.() || "")
+                .filter(Boolean)
+                .filter(mem => {
+                  const memTokens = new Set(
+                    mem.toLowerCase().split(/\W+/).filter(t => t && !stop.has(t))
+                  );
+                  for (const t of userTokens) if (memTokens.has(t)) return true;
+                  return false;
+                })
+                .slice(0, 2)
+            : [];
+
+          for (const mem of filtered) {
+            contextMessages.push({
+              role: "assistant",
+              content: `[Previous context (use only if clearly relevant): ${mem}]`,
+            });
           }
+        } catch (err) {
+          console.error("Error searching memories:", err);
         }
-      } catch (err) {
-        console.error("Error searching memories:", err);
       }
     }
 
@@ -154,24 +178,31 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // --- Format OpenAI messages ---
+    // --- Format OpenAI messages (support multimodal image inputs) ---
     const openAIMessages = [
       {
         role: "system",
         content:
-          "You are a helpful AI assistant. Use any relevant context from previous conversations to provide better responses. Context is marked with [Previous context: ...].",
+          "You are a helpful AI assistant. Use the user's current message as the primary source of truth. Only use any [Previous context: ...] if it is clearly relevant to the user's current request; otherwise ignore it. If an image or file is provided, focus on describing or answering about that file. Never bring up unrelated past preferences.",
       },
       ...contextMessages,
       ...messages
-        .filter(
-          (m: Record<string, unknown>) =>
-            ["system", "user", "assistant"].includes(String(m.role)) &&
-            String(m.content)?.trim()
-        )
-        .map((m: Record<string, unknown>) => ({
-          role: m.role,
-          content: String(m.content),
-        })),
+        .filter((m: Record<string, any>) => ["system", "user", "assistant"].includes(String(m.role)))
+        .map((m: Record<string, any>) => {
+          const baseRole = String(m.role) as "system" | "user" | "assistant";
+          const text = (m.content ?? "").toString();
+          // If user message has an image, send multimodal content
+          if (baseRole === "user" && m.fileUrl && typeof m.fileUrl === "string" && (m.fileType === "image" || (typeof m.fileType === "string" && m.fileType.startsWith("image")))) {
+            return {
+              role: "user",
+              content: [
+                { type: "text", text: text || "Describe this image" },
+                { type: "image_url", image_url: m.fileUrl }
+              ] as any,
+            };
+          }
+          return { role: baseRole, content: text } as any;
+        }),
     ];
 
     // Ensure at least one provider is available

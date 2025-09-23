@@ -334,7 +334,7 @@ export default function UIwoAuth() {
                   className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-3 break-words overflow-x-hidden ${
+                    className={`group relative max-w-[80%] rounded-lg px-4 py-3 break-words overflow-x-hidden ${
                       message.role === 'user' ? 'bg-[#303030]' : 'bg-none'
                     }`}
                   >
@@ -382,7 +382,7 @@ export default function UIwoAuth() {
                     ) : (
                       <>
                         <MarkdownRenderer content={message.content} />
-                        <div className="mt-1 flex gap-3 text-xs text-gray-400">
+                        <div className="mt-1 flex gap-3 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => navigator.clipboard.writeText(message.content)}
                             className="flex items-center gap-1 hover:text-white"
