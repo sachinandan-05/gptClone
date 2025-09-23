@@ -56,8 +56,8 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
-  // Always skip API routes
-  if (pathname.startsWith('/api/')) {
+  // Always allow static assets
+  if (pathname.startsWith('/_next') || pathname.startsWith('/static')) {
     return NextResponse.next();
   }
 
@@ -66,8 +66,14 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
   
-  // Otherwise, require authentication
   const { userId } = await auth();
+
+  // For API routes: do NOT redirect when unauthenticated (guests allowed), but let Clerk run
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
+  // For app routes: require authentication
   if (!userId) {
     const signInUrl = new URL('/sign-in', req.url);
     signInUrl.searchParams.set('redirect_url', req.url);
@@ -79,7 +85,8 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    // Run on non-static, non-API routes only
-    '/((?!_next/static|_next/image|favicon.ico|static/|.*\.(?:svg|png|jpg|jpeg|gif|webp|ttf|woff|woff2|css|js)$).*)'
+    // Run on API and non-static app routes (skip _next, static, and file assets)
+    '/((?!_next/static|_next/image|favicon.ico|static/|.*\.(?:svg|png|jpg|jpeg|gif|webp|ttf|woff|woff2|css|js)$).*)',
+    '/(api|trpc)(.*)'
   ],
 };
