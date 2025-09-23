@@ -35,6 +35,8 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
     title: string;
   } | null>(null)
   const [newTitle, setNewTitle] = useState('')
+  const [searchMode, setSearchMode] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -136,7 +138,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
       {/* Mobile close button */}
       <div className="lg:hidden flex items-center justify-between p-2 border-b border-white/10">
         <h2 className="text-white font-medium">ChatGPT</h2>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 hover:cursor-pointer">
           <X className="h-5 w-5" />
         </Button>
       </div>
@@ -147,7 +149,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
             <img 
               src="/image.png" 
               alt="Logo" 
-              className="h-6 w-6 rounded-sm filter brightness-0 invert" 
+              className="h-6 w-6 rounded-sm filter brightness-0 invert hover:cursor-pointer" 
             />
             {/* <span className="font-semibold text-white">ChatGPT</span> */}
           </div>
@@ -156,19 +158,19 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
           variant="ghost" 
           size="icon" 
           onClick={toggleSidebar}
-          className="h-8 w-8 ml-auto"
+          className="h-8 w-8 ml-auto hover:cursor-pointer" 
         >
           {isCollapsed ? (
             <div className="group relative h-6 w-6 flex items-center justify-center">
               <img 
                 src="/image.png" 
                 alt="Logo" 
-                className="h-6 w-6 rounded-sm filter brightness-0 invert group-hover:opacity-0 transition-opacity" 
+                className="h-6 w-6 rounded-sm filter brightness-0 invert group-hover:opacity-0 transition-opacity hover:cursor-pointer" 
               />
-              <PanelLeft className="absolute h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <PanelLeft className="absolute h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity hover:cursor-pointer" />
             </div>
           ) : (
-            <PanelLeft className="h-4 w-4 transform rotate-180" />
+            <PanelLeft className="h-4 w-4 transform rotate-180 hover:cursor-pointer" />
           )}
         </Button>
       </div>
@@ -177,7 +179,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
       <div className="px-2">
         <Button 
           onClick={() => onNewChat ? onNewChat() : router.push('/')}
-          className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start'} gap-2 ${isCollapsed ? 'bg-transparent' : 'bg-[#181818]'} text-sidebar-primary-foreground hover:bg-[#212121]`}
+          className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start'} gap-2 ${isCollapsed ? 'bg-transparent' : 'bg-[#181818]'} text-sidebar-primary-foreground hover:bg-[#212121] hover:cursor-pointer`}
         >
           <Plus size={16} />
           {!isCollapsed && "New chat"}
@@ -185,12 +187,26 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
       </div>
 
       <div className="px-2">
-        <Button 
-          className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start'} gap-2 p-2 text-left ${isCollapsed ? 'bg-transparent' : 'bg-[#181818]'} text-sidebar-primary-foreground hover:bg-[#212121]`}
-        >
-          <Search size={16}/>
-          {!isCollapsed && "Search chats"}
-        </Button>
+        {searchMode && !isCollapsed ? (
+          <div className="w-full flex items-center gap-2 p-2 bg-[#181818] rounded-md">
+            <Search size={16} className="text-sidebar-primary-foreground" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search chats"
+              className="flex-1 bg-transparent outline-none text-sidebar-primary-foreground placeholder:text-[#8a8a8a]"
+            />
+            <button onClick={() => { setSearchMode(false); setSearchQuery(''); }} className="text-[#8a8a8a] hover:text-white cursor-pointer">Cancel</button>
+          </div>
+        ) : (
+          <Button 
+            className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start'} gap-2 p-2 text-left ${isCollapsed ? 'bg-transparent' : 'bg-[#181818]'} text-sidebar-primary-foreground hover:bg-[#212121] hover:cursor-pointer`}
+            onClick={() => setSearchMode(true)}
+          >
+            <Search size={16}/>
+            {!isCollapsed && "Search chats"}
+          </Button>
+        )}
       </div>
 
       {isCollapsed ? (
@@ -209,16 +225,16 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
             <div className="flex justify-center p-4">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
             </div>
-          ) : chats.length > 0 ? (
-            chats.map((chat) => (
+          ) : (searchQuery ? chats.filter(chat => (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase())) : chats).length > 0 ? (
+            (searchQuery ? chats.filter(chat => (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase())) : chats).map((chat) => (
               <div
                 key={chat._id}
-                className={`group relative w-full ${isCollapsed ? 'flex justify-center' : ''}`}
+                className={`group relative w-full ${isCollapsed ? 'flex justify-center hover:cursor-pointer' : ''}`}
               >
                 <Button
                   variant="ghost"
                   onClick={() => router.push(`/chat/${chat._id}`)}
-                  className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start'} text-left h-auto p-3 text-sidebar-foreground hover:bg-sidebar-accent ${!isCollapsed ? 'pr-10' : ''}`}
+                  className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start hover:cursor-pointer'} text-left h-auto p-3 text-sidebar-foreground hover:bg-sidebar-accent ${!isCollapsed ? 'pr-10' : ''}`}
                 >
                   {!isCollapsed && (
                     <div className="flex flex-col items-start min-w-0">
@@ -236,7 +252,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 hover:bg-[#212121]"
+                          className="h-6 w-6 p-0 hover:bg-[#212121] hover:cursor-pointer"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <MoreHorizontal className="h-4 w-4" />
@@ -248,14 +264,14 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
                         side="right"
                       >
                         <DropdownMenuItem 
-                          className="flex items-center gap-2 hover:bg-[#404040] cursor-pointer"
+                          className="flex items-center gap-2 hover:bg-[#404040] cursor-pointer hover:cursor-pointer"
                           onClick={(e) => handleShare(chat._id, e)}
                         >
                           <Share className="h-4 w-4" />
                           Share
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          className="flex items-center gap-2 hover:bg-[#404040] cursor-pointer"
+                          className="flex items-center gap-2 hover:bg-[#404040] cursor-pointer hover:cursor-pointer"
                           onClick={(e) => handleRename(chat._id, chat.title, e)}
                         >
                           <Edit className="h-4 w-4" />
@@ -307,7 +323,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full bg-[#404040] text-white border border-white/20 rounded-md px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-[#404040] text-white border border-white/20 rounded-md px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 "
               onKeyDown={(e) => {
                 if (e.key === 'Enter') saveRename()
                 if (e.key === 'Escape') cancelRename()
@@ -317,13 +333,13 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
             <div className="flex justify-end gap-3">
               <Button 
                 variant="outline" 
-                className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                className="bg-transparent border-white/20 text-white hover:bg-white/10 hover:cursor-pointer"
                 onClick={cancelRename}
               >
                 Cancel
               </Button>
               <Button 
-                className="bg-blue-500 hover:bg-blue-600"
+                className="bg-blue-500 hover:bg-blue-600 hover:cursor-pointer"
                 onClick={saveRename}
                 disabled={!newTitle.trim()}
               >

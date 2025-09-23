@@ -358,7 +358,7 @@ export default function ChatInput({
               </div>
               <button
                 type="button"
-                className="px-3 py-2 rounded-full border border-white/10 text-white/90 hover:border-white/20 transition-colors"
+                className="px-3 py-2 rounded-full  text-white/90 hover:border-white/20 transition-colors"
                 disabled={isLoading || disabled || isUploading}
                 aria-label="Voice input"
               >
@@ -373,7 +373,7 @@ export default function ChatInput({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading || disabled || isUploading}
-              className="mr-2 flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 border border-white/10 text-white/90 hover:border-white/20 flex items-center justify-center cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
+              className="mr-2 flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full   text-white/90 hover:border-white/20 flex items-center justify-center cursor-pointer hover:shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
               aria-label="Attach"
             >
               <Plus className="w-4 h-4" />
@@ -398,7 +398,7 @@ export default function ChatInput({
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 type="button"
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 border border-white/10 text-white/90 hover:border-white/20 flex items-center justify-center cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full  text-white/90 hover:border-white/20 flex items-center justify-center cursor-pointer hover:shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
                 disabled={isLoading || disabled || isUploading}
                 aria-label="Voice"
               >
@@ -470,10 +470,10 @@ export default function ChatInput({
                 }`}
                 aria-label="Send message"
               >
-                {isLoading || isUploading ? (
+              {isLoading || isUploading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <Send className="w-5 h-5" />
+                  <AudioLines className="w-5 h-5" />
                 )}
               </button>
             </div>

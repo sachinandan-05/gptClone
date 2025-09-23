@@ -93,6 +93,43 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Listen for delete-current-chat from navbar menu
+  useEffect(() => {
+    const handler = async () => {
+      if (!currentChatId) return;
+      try {
+        await fetch(`/api/chat/${currentChatId}`, { method: 'DELETE' });
+        // Reset UI after delete
+        setMessages([]);
+        setCurrentChatId(null);
+        setIsNewChat(true);
+        // Navigate to home/new chat
+        if (typeof window !== 'undefined') {
+          window.history.pushState({}, '', '/');
+        }
+      } catch (e) {
+        console.error('Failed to delete chat', e);
+      }
+    };
+    // @ts-ignore CustomEvent
+    window.addEventListener('delete-current-chat', handler as any);
+    return () => {
+      // @ts-ignore CustomEvent
+      window.removeEventListener('delete-current-chat', handler as any);
+    };
+  }, [currentChatId]);
+
+  // Treat a default assistant greeting as empty state so the centered input shows
+  const isAssistantGreeting = (m: Message) => {
+    const text = (m.content || '').trim();
+    return (
+      m.role === 'assistant' && /hello!\s*how can i assist you today\?/i.test(text)
+    );
+  };
+
+  const isEmptyLike = messages.length === 0 || (messages.length === 1 && isAssistantGreeting(messages[0]));
+  const visibleMessages = isEmptyLike ? [] : messages;
+
   const handleSubmit = async (e?: React.FormEvent, fileUrl?: string, fileType?: 'image' | 'document' | 'video' | 'audio' | 'other') => {
     e?.preventDefault?.();
     if ((!input.trim() && !fileUrl) || isLoading) return;
@@ -352,8 +389,6 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
       )}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         <Navbar 
-       
-
           isCollapsed={isCollapsed}
           showSidebar={showSidebar}
           setShowSidebar={setShowSidebar}
@@ -361,7 +396,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         <div className="flex-1 w-full overflow-hidden">
         <ScrollArea className="h-full w-full">
           <div className="max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-6 space-y-6">
-            {messages.length === 0 ? (
+            {isEmptyLike ? (
               <div className="flex flex-col items-center justify-center h-[65vh] text-center px-4">
                 <h1 className="mb-6 text-3xl sm:text-4xl font-semibold text-white">What's on the agenda today?</h1>
                 <div className="w-full max-w-4xl">
@@ -376,7 +411,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
               </div>
             ) : (
               <>
-                {messages.map((message) => (
+                {visibleMessages.map((message) => (
                   <div
                     key={message.id}
                     className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
@@ -426,29 +461,47 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                           </div>
                         </div>
                       ) : (
-                        <>
+                        <div className="relative">
                           {message.content && <MarkdownRenderer content={message.content} />}
-                          <div className="mt-1 flex gap-3 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => navigator.clipboard.writeText(message.content)}
-                              className="flex items-center gap-1 hover:text-white"
-                              aria-label="Copy message"
-                              title="Copy"
-                            >
-                              <Copy className="w-4 h-4" />
-                            </button>
-                            {message.role === 'user' && (
+                          
+                          {/* Hover UI positioned below the message bubble */}
+                          {message.role === 'user' && (
+                            <div className="absolute -bottom-10 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(message.content)}
+                                  className="p-2 rounded-lg bg-[#424242] hover:bg-[#525252] transition-colors cursor-pointer"
+                                  aria-label="Copy message"
+                                  title="Copy"
+                                >
+                                  <Copy className="w-4 h-4 text-white" />
+                                </button>
+                                <button
+                                  onClick={() => startEdit(message)}
+                                  className="p-2 rounded-lg bg-[#424242] hover:bg-[#525252] transition-colors cursor-pointer"
+                                  aria-label="Edit message"
+                                  title="Edit message"
+                                >
+                                  <SquarePen className="w-4 h-4 text-white" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* For assistant messages, keep the simple inline style */}
+                          {message.role === 'assistant' && (
+                            <div className="mt-1 flex gap-3 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
-                                onClick={() => startEdit(message)}
+                                onClick={() => navigator.clipboard.writeText(message.content)}
                                 className="flex items-center gap-1 hover:text-white"
-                                aria-label="Edit message"
-                                title="Edit"
+                                aria-label="Copy message"
+                                title="Copy"
                               >
-                                <SquarePen className="w-4 h-4" />
+                                <Copy className="w-4 h-4" />
                               </button>
-                            )}
-                          </div>
-                        </>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -467,7 +520,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         </ScrollArea>
         </div>
 
-        {messages.length > 0 && (
+        {!isEmptyLike && (
           <div className="w-full">
             <div className="w-full max-w-3xl mx-auto px-4 sm:px-6">
               <ChatInput
