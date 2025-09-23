@@ -145,6 +145,16 @@ export async function POST(req: NextRequest) {
         })),
     ];
 
+    // Ensure at least one provider is available
+    const hasOpenAI = Boolean(openai as unknown as OpenAI);
+    const hasOpenRouter = Boolean(openrouter as unknown as OpenAI);
+    if (!hasOpenAI && !hasOpenRouter) {
+      return NextResponse.json(
+        { error: 'LLM_NOT_CONFIGURED', message: 'No OpenAI or OpenRouter API key configured' },
+        { status: 500 }
+      );
+    }
+
     // --- Streaming Mode ---
     if (shouldStream) {
       const stream = new TransformStream();
@@ -190,15 +200,20 @@ export async function POST(req: NextRequest) {
 
           // Call OpenAI / OpenRouter (streaming)
           let aiStream;
-          try {
-            aiStream = await openai.chat.completions.create({
-              model: "gpt-4o",
-              messages: openAIMessages,
-              stream: true,
-              max_tokens: 1000,
-              temperature: 0.7,
-            });
-          } catch (error) {
+          if (hasOpenAI) {
+            try {
+              aiStream = await openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: openAIMessages,
+                stream: true,
+                max_tokens: 1000,
+                temperature: 0.7,
+              });
+            } catch (error) {
+              if (!hasOpenRouter) throw error;
+            }
+          }
+          if (!aiStream && hasOpenRouter) {
             aiStream = await openrouter.chat.completions.create({
               model: "openai/gpt-4o",
               messages: openAIMessages,
@@ -279,12 +294,27 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Non-streaming fallback ---
-    const completion = await openrouter.chat.completions.create({
-      model: "openai/gpt-3.5-turbo",
-      messages: openAIMessages,
-      max_tokens: 1000,
-      temperature: 0.7,
-    });
+    let completion;
+    if (hasOpenAI) {
+      try {
+        completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: openAIMessages,
+          max_tokens: 1000,
+          temperature: 0.7,
+        });
+      } catch (error) {
+        if (!hasOpenRouter) throw error;
+      }
+    }
+    if (!completion && hasOpenRouter) {
+      completion = await openrouter.chat.completions.create({
+        model: "openai/gpt-3.5-turbo",
+        messages: openAIMessages,
+        max_tokens: 1000,
+        temperature: 0.7,
+      });
+    }
 
     const aiResponse = completion.choices[0]?.message?.content || "";
 

@@ -90,12 +90,19 @@ export default function UIwoAuth() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        if (error.error === "GUEST_LIMIT_REACHED") {
+        let errorData: any = null;
+        const text = await response.text();
+        try {
+          errorData = JSON.parse(text);
+        } catch {
+          // Non-JSON (e.g., HTML error page)
+        }
+        if (errorData?.error === "GUEST_LIMIT_REACHED") {
           setShowUpgradeModal(true);
           return;
         }
-        throw new Error(error?.message || "Something went wrong");
+        const message = errorData?.message || errorData?.error || text || "Something went wrong";
+        throw new Error(message);
       }
 
       // Handle streaming response
