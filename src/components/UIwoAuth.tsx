@@ -308,10 +308,10 @@ export default function UIwoAuth() {
           <div className="flex items-center space-x-3">
             {!isSignedIn && (
               <>
-                <Button onClick={() => openSignIn()} className="text-black bg-white px-4 py-2 rounded-full text-sm font-medium">
+                <Button onClick={() => openSignIn()} className="text-black bg-white px-4 py-2 rounded-full text-sm font-medium hover:cursor-pointer">
                   Log in
                 </Button>
-                <Button onClick={() => openSignIn()} className=" hidden lg:block text-white bg-transparent border border-gray-600 px-4 py-2 rounded-full text-sm">
+                <Button onClick={() => openSignIn()} className=" hidden lg:block text-white bg-transparent border border-gray-600 px-4 py-2 rounded-full text-sm hover:cursor-pointer">
                   Sign up for free
                 </Button>
               </>
@@ -409,7 +409,7 @@ export default function UIwoAuth() {
                       <>
                         <button
                           onClick={() => navigator.clipboard.writeText(message.content)}
-                          className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                          className="p-2 rounded-lg  hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
                           aria-label="Copy message"
                           title="Copy"
                         >
@@ -417,7 +417,7 @@ export default function UIwoAuth() {
                         </button>
                         <button
                           onClick={() => startEdit(message)}
-                          className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                          className="p-2 rounded-lg  hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
                           aria-label="Edit message"
                           title="Edit"
                         >

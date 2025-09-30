@@ -24,7 +24,8 @@ const TypingIndicator = () => (
       animation: 'bounce 1.4s infinite ease-in-out',
       animationDelay: '0.4s'
     }} />
-    <style jsx>{`
+
+    <style>{`
       @keyframes bounce {
         0%, 60%, 100% { transform: translateY(0); }
         30% { transform: translateY(-6px); }
@@ -32,6 +33,7 @@ const TypingIndicator = () => (
     `}</style>
   </div>
 );
+
 
 export interface Message {
   id: string;
@@ -496,7 +498,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                         <>
                           <button
                             onClick={() => navigator.clipboard.writeText(message.content)}
-                            className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                            className="p-2 rounded-lg  hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
                             aria-label="Copy message"
                             title="Copy"
                           >
@@ -504,7 +506,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                           </button>
                           <button
                             onClick={() => startEdit(message)}
-                            className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                            className="p-2 rounded-lg  hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
                             aria-label="Edit message"
                             title="Edit"
                           >

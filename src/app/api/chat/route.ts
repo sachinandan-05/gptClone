@@ -141,9 +141,9 @@ export async function POST(req: NextRequest) {
             ? relevantMemories
                 .map((m: any) => m?.memory?.toString?.() || "")
                 .filter(Boolean)
-                .filter(mem => {
+                .filter((mem: string) => {
                   const memTokens = new Set(
-                    mem.toLowerCase().split(/\W+/).filter(t => t && !stop.has(t))
+                    mem.toLowerCase().split(/\W+/).filter((t: string) => t && !stop.has(t))
                   );
                   for (const t of userTokens) if (memTokens.has(t)) return true;
                   return false;
@@ -366,29 +366,39 @@ export async function POST(req: NextRequest) {
 
     // --- Non-streaming fallback ---
     let completion;
-    if (hasOpenAI) {
-      try {
-        completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+    
+    try {
+      if (hasOpenAI) {
+        try {
+          completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: openAIMessages,
+            max_tokens: 1000,
+            temperature: 0.7,
+          });
+        } catch (error) {
+          if (!hasOpenRouter) throw error;
+          console.warn('OpenAI API failed, falling back to OpenRouter');
+        }
+      }
+      
+      if ((!completion || !completion.choices?.[0]?.message) && hasOpenRouter) {
+        completion = await openrouter.chat.completions.create({
+          model: "openai/gpt-3.5-turbo",
           messages: openAIMessages,
           max_tokens: 1000,
           temperature: 0.7,
         });
-      } catch (error) {
-        if (!hasOpenRouter) throw error;
       }
+      
+      if (!completion || !completion.choices?.[0]?.message) {
+        throw new Error('Failed to get a valid response from any AI provider');
+      }
+    } catch (error) {
+      console.error('Error in chat completion:', error);
+      throw new Error('Failed to process your request. Please try again later.');
     }
-    if (!completion && hasOpenRouter) {
-      completion = await openrouter.chat.completions.create({
-        model: "openai/gpt-3.5-turbo",
-        messages: openAIMessages,
-        max_tokens: 1000,
-        temperature: 0.7,
-      });
-    }
-
     const aiResponse = completion.choices[0]?.message?.content || "";
-
     // Save chat + assistant message
     let currentChatId = chatId;
     if (!currentChatId) {
