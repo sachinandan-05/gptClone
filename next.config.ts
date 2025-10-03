@@ -10,6 +10,9 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   
+  // Server external packages for Next.js 15 compatibility
+  serverExternalPackages: ['@clerk/nextjs'],
+  
   
   // Disable ESLint during build
   eslint: {
@@ -65,6 +68,18 @@ const nextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname, 'src'),
+    };
+    
+    // Fix for Clerk module resolution in Next.js 15
+    // Removed externals for Clerk to fix API route imports
+    
+    // Additional module resolution fixes
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+      crypto: false,
     };
     
     // Important: return the modified config

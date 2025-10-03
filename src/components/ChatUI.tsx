@@ -1,48 +1,47 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Sidebar as SidebarIcon, Dot, Paperclip,  Loader, Copy, SquarePen, Send } from "lucide-react";
+import { Sidebar as SidebarIcon, Dot, Check,Paperclip,  Loader, Copy, Send } from "lucide-react";
+import { GoPencil } from "react-icons/go";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Navbar from './Navbar';
 import ChatInput from './ChatInput';
 import { Sidebar} from './Sidebar';
 import { MarkdownRenderer } from '../app/helper/MarkdownRenderer';
+import { Message } from '@/types/chat';
 
-// Typing indicator component with smooth animation
+// Re-export Message type for compatibility
+export type { Message };
+
+// Typing indicator component with smooth fade in-out animation
 const TypingIndicator = () => (
-  <div className="flex items-center space-x-1 p-2">
-    <div className="w-2 h-2 rounded-full bg-gray-400" style={{
-      animation: 'bounce 1.4s infinite ease-in-out',
-      animationDelay: '0s'
-    }} />
-    <div className="w-2 h-2 rounded-full bg-gray-400" style={{
-      animation: 'bounce 1.4s infinite ease-in-out',
-      animationDelay: '0.2s'
-    }} />
-    <div className="w-2 h-2 rounded-full bg-gray-400" style={{
-      animation: 'bounce 1.4s infinite ease-in-out',
-      animationDelay: '0.4s'
-    }} />
+  <div className="flex items-center space-x-1 py-3">
+    <div className="relative w-8 h-8 flex items-center justify-center">
+      {/* Single white dot with fade in-out */}
+      <div 
+        className="w-3 h-3 rounded-full bg-white"
+        style={{
+          animation: 'fade-in-out 1.4s ease-in-out infinite'
+        }}
+      />
+    </div>
 
     <style>{`
-      @keyframes bounce {
-        0%, 60%, 100% { transform: translateY(0); }
-        30% { transform: translateY(-6px); }
+      @keyframes fade-in-out {
+        0%, 100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 1;
+        }
       }
     `}</style>
   </div>
 );
 
 
-export interface Message {
-  id: string;
-  content: string;
-  role: "user" | "assistant";
-  timestamp: Date;
-  fileUrl?: string;
-  fileType?: 'image' | 'document' | 'video' | 'audio' | 'other';
-}
 
 interface ChatUIProps {
   initialMessages?: Message[];
@@ -58,10 +57,20 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
   const [isNewChat, setIsNewChat] = useState(!chatId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  
+  // Custom function to open sidebar and ensure it's expanded on mobile
+  const handleShowSidebar = (show: boolean) => {
+    setShowSidebar(show);
+    // On mobile, always show expanded sidebar
+    if (show && window.innerWidth < 1024) {
+      setIsCollapsed(false);
+    }
+  };
   const [isLoading, setIsLoading] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const toggleSidebarCollapse = () => {
     setIsCollapsed(!isCollapsed);
@@ -90,6 +99,32 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
       setMessages(initialMessages);
     }
   }, [initialMessages]);
+
+  // Load messages when chatId changes
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!chatId) return;
+      
+      try {
+        const response = await fetch(`/api/chat/${chatId}`);
+        if (!response.ok) {
+          console.error('Failed to fetch messages');
+          return;
+        }
+        
+        const data = await response.json();
+        if (data.messages && Array.isArray(data.messages)) {
+          setMessages(data.messages);
+          setCurrentChatId(chatId);
+          setIsNewChat(false);
+        }
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      }
+    };
+
+    loadMessages();
+  }, [chatId]);
 
   // Auto-scroll when new messages arrive
   useEffect(() => {
@@ -370,8 +405,9 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
 
 
   return (
+    <TooltipProvider>
     <div 
-      className="flex h-screen bg-[#212121] min-w-0 overflow-x-hidden"
+      className="flex flex-col lg:flex-row h-screen bg-[#212121] w-full overflow-hidden"
       style={{
         fontFamily: 'ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"',
         fontSize: '16px',
@@ -380,24 +416,29 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         color: 'rgb(255, 255, 255)'
       }}
     >
+      {/* Sidebar - Desktop persistent, Mobile overlay */}
       {showSidebar && (
-        <div className="fixed inset-0 z-1 w-[259px] ">
-          <Sidebar
-            isCollapsed={isCollapsed}
-            onToggleCollapse={toggleSidebarCollapse}
-            onClose={() => setShowSidebar(false)}
-            onNewChat={handleNewChat}
-          />
-        </div>
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setShowSidebar(false)} />
       )}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+      <div className={`${showSidebar ? 'fixed lg:relative' : 'hidden lg:block'} inset-0 lg:inset-auto z-50 lg:z-auto`}>
+        <Sidebar
+          key={isCollapsed ? 'collapsed' : 'expanded'}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={toggleSidebarCollapse}
+          onClose={() => setShowSidebar(false)}
+          onNewChat={handleNewChat}
+        />
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
         <Navbar 
           isCollapsed={isCollapsed}
           showSidebar={showSidebar}
-          setShowSidebar={setShowSidebar}
+          setShowSidebar={handleShowSidebar}
         />
         <div className="flex-1 w-full overflow-hidden">
-        <ScrollArea className="h-full w-full">
+        <ScrollArea className="h-full w-full custom-scrollbar">
           <div className="max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-6 space-y-6">
             {isEmptyLike ? (
               <div className="flex flex-col items-center justify-center h-[65vh] text-center px-4">
@@ -413,11 +454,11 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col h-full lg:w-full w-full space-x-6 " >
-                {visibleMessages.map((message) => (
+              <div className="flex flex-col h-full w-full space-y-4" >
+                {visibleMessages.map((message, index) => (
                   <div 
-                    key={message.id}
-                    className={`group flex flex-col lg:w-full w-[ 600px] ${message.role === 'assistant' ? 'items-start' : 'items-end'}`}
+                    key={message.id || `message-${index}-${Date.now()}`}
+                    className={`group flex flex-col w-full ${message.role === 'assistant' ? 'items-start' : 'items-end'}`}
                   >
                     <div
                       className={`relative max-w-[calc(100%-2rem)] sm:max-w-[80%] rounded-lg px-4 break-words overflow-x-hidden ${
@@ -425,7 +466,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                       } ${message.role === 'user' ? 'shadow-[0_8px_30px_rgba(0,0,0,0.2)]' : ''}`}
                     >
                       {message.fileUrl && message.fileType === 'image' && (
-                        <div className="mb-2">
+                        <div key={`image-${message.id}`} className="mb-2">
                           <img
                             src={message.fileUrl}
                             alt="Uploaded content"
@@ -434,7 +475,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                         </div>
                       )}
                       {message.fileUrl && message.fileType === 'document' && (
-                        <div className="mb-2 p-2 bg-white/10 rounded-md">
+                        <div key={`doc-${message.id}`} className="mb-2 p-2 bg-white/10 rounded-md">
                           <a
                             href={message.fileUrl}
                             target="_blank"
@@ -496,32 +537,69 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                     <div className={`flex gap-2 mt-1 ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
                       {message.role === 'user' ? (
                         <>
-                          <button
-                            onClick={() => navigator.clipboard.writeText(message.content)}
-                            className="p-2 rounded-lg  hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
-                            aria-label="Copy message"
-                            title="Copy"
-                          >
-                            <Copy className="w-4 h-4 text-white" />
-                          </button>
-                          <button
-                            onClick={() => startEdit(message)}
-                            className="p-2 rounded-lg  hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
-                            aria-label="Edit message"
-                            title="Edit"
-                          >
-                            <SquarePen className="w-4 h-4 text-white" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                key={`copy-${message.id}`}
+                                onClick={() => {
+                                  navigator.clipboard.writeText(message.content);
+                                  setCopiedId(message.id);
+                                  setTimeout(() => setCopiedId(null), 2000);
+                                }}
+                                className="p-2 rounded-lg hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                                aria-label="Copy message"
+                              >
+                                {copiedId === message.id ? (
+                                  <Check className="w-4 h-4 text-white" />
+                                ) : (
+                                  <Copy className="w-4 h-4 text-white" />
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                              <p>{copiedId === message.id ? 'Copied!' : 'Copy'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                key={`edit-${message.id}`}
+                                onClick={() => startEdit(message)}
+                                className="p-2 rounded-lg hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                                aria-label="Edit message"
+                              >
+                                <GoPencil className="w-4 h-4 text-white" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                              <p>Edit message</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </>
                       ) : (
-                        <button
-                          onClick={() => navigator.clipboard.writeText(message.content)}
-                          className="p-2 rounded-lg bg-[#424242] hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
-                          aria-label="Copy message"
-                          title="Copy"
-                        >
-                          <Copy className="w-4 h-4 text-white" />
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              key={`copy-${message.id}`}
+                              onClick={() => {
+                                navigator.clipboard.writeText(message.content);
+                                setCopiedId(message.id);
+                                setTimeout(() => setCopiedId(null), 2000);
+                              }}
+                              className="p-2 rounded-lg hover:bg-[#303030] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+                              aria-label="Copy message"
+                            >
+                              {copiedId === message.id ? (
+                                <Check className="w-4 h-4 text-white" />
+                              ) : (
+                                <Copy className="w-4 h-4 text-white" />
+                              )}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">
+                            <p>{copiedId === message.id ? 'Copied!' : 'Copy'}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                     </div>
                   </div>
@@ -554,5 +632,6 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
         )}
       </div>
     </div>
+    </TooltipProvider>
   );
 }

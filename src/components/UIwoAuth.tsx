@@ -20,12 +20,29 @@ interface Message {
   fileType?: 'image' | 'document' | 'video' | 'audio' | 'other';
 }
 
-// Typing indicator component
+// Typing indicator component with smooth fade in-out animation
 const TypingIndicator = () => (
-  <div className="flex space-x-1 p-2">
-    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+  <div className="flex items-center space-x-1 py-3">
+    <div className="relative w-8 h-8 flex items-center justify-center">
+      {/* Single white dot with fade in-out */}
+      <div 
+        className="w-3 h-3 rounded-full bg-white"
+        style={{
+          animation: 'fade-in-out 1.4s ease-in-out infinite'
+        }}
+      />
+    </div>
+
+    <style>{`
+      @keyframes fade-in-out {
+        0%, 100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+    `}</style>
   </div>
 );
 
@@ -46,13 +63,17 @@ export default function UIwoAuth() {
 
   const hasReachedLimit = !isSignedIn && guestMessageCount >= GUEST_MESSAGE_LIMIT;
 
+
+
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = async (content: string, fileUrl?: string, fileType?: 'image' | 'document' | 'video' | 'audio' | 'other') => {
+  const handleSendMessage = async (content: string, fileUrl?: string, fileType?: string): Promise<void> => {
     if ((!content.trim() && !fileUrl) || isLoading || hasReachedLimit) return;
+    
+    const typedFileType = fileType as 'image' | 'document' | 'video' | 'audio' | 'other' | undefined;
 
     setIsLoading(true);
 
@@ -63,7 +84,7 @@ export default function UIwoAuth() {
         role: "user",
         timestamp: new Date(),
         fileUrl,
-        fileType,
+        fileType: typedFileType,
       };
 
       const updatedMessages = [...messages, userMessage];
@@ -84,7 +105,7 @@ export default function UIwoAuth() {
             role: "user",
             content,
             ...(fileUrl && { fileUrl }),
-            ...(fileType && { fileType }),
+            ...(typedFileType && { fileType: typedFileType }),
           }],
           chatId: currentChatId,
           stream: true,
@@ -308,7 +329,7 @@ export default function UIwoAuth() {
           <div className="flex items-center space-x-3">
             {!isSignedIn && (
               <>
-                <Button onClick={() => openSignIn()} className="text-black bg-white px-4 py-2 rounded-full text-sm font-medium hover:cursor-pointer">
+                <Button onClick={() => openSignIn()} className="text-black bg-white px-4 py-2 rounded-full text-sm font-medium hover:cursor-pointer hover:bg-gray-200 hover:text-gray-800">
                   Log in
                 </Button>
                 <Button onClick={() => openSignIn()} className=" hidden lg:block text-white bg-transparent border border-gray-600 px-4 py-2 rounded-full text-sm hover:cursor-pointer">

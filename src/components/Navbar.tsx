@@ -1,7 +1,9 @@
 import React, { ReactNode, useState } from 'react';
-import { Share2, MoreHorizontal, Archive, Flag, Trash2 } from 'lucide-react';
+import { Share2, MoreHorizontal, Archive, Flag, Trash2, ChevronDown, SquarePen } from 'lucide-react';
+import { HiMenuAlt4 } from 'react-icons/hi';
 import { DropdownMenuCheckboxes } from '../app/helper/dropdown';
-import { Button } from './ui/button';
+
+
 
 interface NavbarProps {
   children?: ReactNode;
@@ -13,30 +15,54 @@ interface NavbarProps {
 export default function Navbar({ children, isCollapsed, showSidebar, setShowSidebar }: NavbarProps) {
   const [selected, setSelected] = useState("ChatGPT") // default shown in navbar
   const [showMenu, setShowMenu] = useState(false);
-  const toggleSidebar = () => {
-    setShowSidebar(!showSidebar);
-  };
+
+
   return (
-    <div className={`flex items-center justify-between px-4 h-14 border-gray-500 transition-all duration-300 ${showSidebar ? 'border-b-[0.5px] border-[#303030] bg-[#212121]' : 'lg:border-b-0 bg-transparent'}`}>
-      {/* Left: app selector */}
-      <div className='flex items-center gap-2'>
-        <Button variant="ghost" size="icon" onClick={() => setShowSidebar(true)} className="h-8 w-8 hover:cursor-pointer">
-          <img src="/image.png" alt="" className='h-6 w-6 rounded-sm filter brightness-0 invert'/>
-        </Button>
-        <div className='hidden sm:block hover:cursor-pointer '>
-        <DropdownMenuCheckboxes selected={selected} setSelected={setSelected}  />
+    <div className={`flex items-center justify-between px-4 lg:px-4 h-14 bg-[#212121] border-b border-[#2d2d2d] transition-all duration-300 ${!showSidebar ? 'lg:border-b-0 lg:bg-transparent' : ''}`}>
+      {/* Mobile: Hamburger Menu + ChatGPT Button */}
+      <div className='flex items-center gap-2 lg:hidden'>
+       
+        <button 
+          onClick={() => setShowSidebar(true)} 
+          className="h-10 w-10 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors relative -ml-1"
+        >
+          <HiMenuAlt4 className="h-6 w-6 text-white" />
+          {/* Blue notification dot */}
+          <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-blue-500 rounded-full"></span>
+        </button>
+
+        <div className='hover:cursor-pointer lg:hidden'>
+          <DropdownMenuCheckboxes selected={selected} setSelected={setSelected}  />
         </div>
+       
       </div>
 
-      {/* Right: Share and more */}
+        {/* <Button variant="ghost" size="icon" onClick={() => setShowSidebar(true)} className="h-8 w-8 hover:cursor-pointer">
+          <img src="/image.png" alt="" className='h-6 w-6 rounded-sm filter brightness-0 invert'/>
+        </Button> */}
+        <div className='hover:cursor-pointer lg:flex hidden'>
+          <DropdownMenuCheckboxes selected={selected} setSelected={setSelected}  />
+        </div>
+    
+
+      {/* Right: New Chat (mobile) / Share and More (desktop) */}
       <div className='flex items-center gap-2 relative'>
-        <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-[#303030] text-white/90 cursor-pointer">
+        {/* Mobile: New Chat Icon */}
+        <button 
+          className="lg:hidden h-10 w-10 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors -mr-1"
+        >
+          <SquarePen className="h-5 w-5 text-white strokeWidth={2}" />
+        </button>
+
+        {/* Desktop: Share Button */}
+        <button className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-[#303030] text-white/90 cursor-pointer">
           <Share2 className='w-4 h-4' />
           <span className='text-sm'>Share</span>
         </button>
+
         {/* More menu (click toggles) */}
         <div className="relative">
-          <button onClick={() => setShowMenu(v=>!v)} className='h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#303030] cursor-pointer'>
+          <button onClick={() => setShowMenu(v=>!v)} className='h-8 w-8 hidden lg:flex items-center justify-center rounded-full hover:bg-[#303030] cursor-pointer'>
             <MoreHorizontal className='w-5 h-5' />
           </button>
           {showMenu && (

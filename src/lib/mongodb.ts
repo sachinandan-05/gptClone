@@ -300,7 +300,8 @@ export async function getMessagesByChatId(chatId: string, userId?: string, guest
     } else if (guestId) {
       query.guestId = guestId;
     } else {
-      console.error('Either userId or guestId must be provided');
+      console.error('Either userId or guestId must be provided for chat:', chatId);
+      console.error('Provided parameters:', { userId, guestId });
       return [];
     }
     

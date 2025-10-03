@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getAuth } from '@clerk/nextjs/server';
 import { Message as MessageModel } from '@/models/message';
 import Chat from '@/models/chat';
 import dbConnect from '@/lib/mongodb';
@@ -19,7 +19,7 @@ export async function GET(
   request: NextRequest,
   context: RouteContext
 ): Promise<Response> {
-  const { userId } = await auth();
+  const { userId } = getAuth(request);
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
@@ -41,7 +41,14 @@ export async function GET(
     .sort({ timestamp: 1 })
     .lean();
 
-    return NextResponse.json({ messages });
+    // Map MongoDB _id to id for frontend compatibility
+    const formattedMessages = messages.map((msg: any) => ({
+      ...msg,
+      id: msg._id?.toString() || msg.id,
+      _id: undefined
+    }));
+
+    return NextResponse.json({ messages: formattedMessages });
   } catch (error) {
     console.error('Error fetching messages:', error);
     return NextResponse.json(
@@ -55,7 +62,7 @@ export async function DELETE(
   request: NextRequest,
   context: RouteContext
 ): Promise<Response> {
-  const { userId } = await auth();
+  const { userId } = getAuth(request);
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
@@ -92,7 +99,7 @@ export async function PATCH(
   request: NextRequest,
   context: RouteContext
 ): Promise<Response> {
-  const { userId } = await auth();
+  const { userId } = getAuth(request);
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
   }

@@ -1,12 +1,14 @@
 "use client"
-import { PanelLeft, Search, UserIcon, MoreHorizontal, Share, Edit, Archive, Trash2, X } from "lucide-react"
+import { PanelLeft, Search, UserIcon,SquarePen, MoreHorizontal, Share, Edit, Archive, Trash2, X, MessageCircle, ChevronRight, ChevronDown, FolderOpen, Layers } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Plus } from "lucide-react"
+import { GoPencil } from "react-icons/go"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { UserDropdown } from "@/app/helper/menu"
+import { FaArrowRight ,} from "react-icons/fa6";
+import { FaArrowLeft } from "react-icons/fa";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +39,26 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
   const [newTitle, setNewTitle] = useState('')
   const [searchMode, setSearchMode] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [chatsExpanded, setChatsExpanded] = useState(true)
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+K or Ctrl+K for search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchMode(true)
+      }
+      // Cmd+Shift+O or Ctrl+Shift+O for new chat
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'o') {
+        e.preventDefault()
+        onNewChat ? onNewChat() : router.push('/')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onNewChat, router])
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -134,221 +156,480 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onClose, onNewChat }: S
   }
 
   return (
-    <div className={`h-screen flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[50px] bg-[#212121] border-r border-white/10' : 'w-[259px] lg:w-[259px] bg-sidebar'} font-sans text-sm font-normal leading-5 text-white`}>
+    <div className={`h-screen flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[50px] bg-[#212121] border-r border-white/5' : 'w-[260px] lg:w-[260px] bg-[#171717]'} border-r border-white/5 font-sans text-sm font-normal leading-5 text-white`}>
       {/* Mobile close button */}
-      <div className="lg:hidden flex items-center justify-between p-2 border-b border-white/10">
-        <h2 className="text-white font-medium">ChatGPT</h2>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 hover:cursor-pointer">
-          <X className="h-5 w-5" />
+      <div className="lg:hidden flex items-center justify-between p-4">
+        <div className="flex items-center gap-3">
+          <img 
+            src="/image.png" 
+            alt="Logo" 
+            className="h-8 w-8 rounded-sm filter brightness-0 invert" 
+          />
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 hover:bg-white/10 transition-colors rounded-lg">
+          <X className="h-6 w-6 text-white" />
         </Button>
       </div>
-      {/* Logo and Collapse Button */}
-      <div className="flex items-center justify-between p-2">
+      {/* Logo and Collapse Button - Desktop only */}
+      <div className="hidden lg:flex items-center justify-between p-3">
         {!isCollapsed && (
           <div className="flex items-center gap-2">
             <img 
               src="/image.png" 
               alt="Logo" 
-              className="h-6 w-6 rounded-sm filter brightness-0 invert hover:cursor-pointer" 
+              className="h-6 w-6 rounded-sm filter brightness-0 invert" 
             />
-            {/* <span className="font-semibold text-white">ChatGPT</span> */}
+            <span className="font-semibold text-white text-lg">ChatGPT</span>
           </div>
         )}
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={toggleSidebar}
-          className="h-8 w-8 ml-auto hover:cursor-pointer" 
+          className={`h-8 w-8 ml-auto hover:bg-white/10 transition-colors ${isCollapsed ? 'hover:cursor-e-resize' : 'hover:cursor-w-resize'}`}
         >
           {isCollapsed ? (
             <div className="group relative h-6 w-6 flex items-center justify-center">
               <img 
                 src="/image.png" 
                 alt="Logo" 
-                className="h-6 w-6 rounded-sm filter brightness-0 invert group-hover:opacity-0 transition-opacity hover:cursor-pointer" 
+                className="h-5 w-5 rounded-sm filter brightness-0 invert group-hover:opacity-0 transition-opacity" 
               />
-              <PanelLeft className="absolute h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity hover:cursor-pointer" />
+              <PanelLeft className="absolute h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-white/70" />
             </div>
           ) : (
-            <PanelLeft className="h-4 w-4 transform rotate-180 hover:cursor-pointer" />
+            <PanelLeft className="h-4 w-4 transform rotate-180 text-white/70" />
           )}
         </Button>
       </div>
 
-      {/* New Chat Button */}
-      <div className="px-2">
-        <Button 
-          onClick={() => onNewChat ? onNewChat() : router.push('/')}
-          className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start'} gap-2 ${isCollapsed ? 'bg-transparent' : 'bg-[#181818]'} text-sidebar-primary-foreground hover:bg-[#212121] hover:cursor-pointer`}
-        >
-          <Plus size={16} />
-          {!isCollapsed && "New chat"}
-        </Button>
-      </div>
-
-      <div className="px-2">
-        {searchMode && !isCollapsed ? (
-          <div className="w-full flex items-center gap-2 p-2 bg-[#181818] rounded-md">
-            <Search size={16} className="text-sidebar-primary-foreground" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search chats"
-              className="flex-1 bg-transparent outline-none text-sidebar-primary-foreground placeholder:text-[#8a8a8a]"
-            />
-            <button onClick={() => { setSearchMode(false); setSearchQuery(''); }} className="text-[#8a8a8a] hover:text-white cursor-pointer">Cancel</button>
-          </div>
-        ) : (
+      {/* Menu Items */}
+      {!isCollapsed && (
+        <div className="px-3 space-y-1">
+          {/* New Chat */}
           <Button 
-            className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start'} gap-2 p-2 text-left ${isCollapsed ? 'bg-transparent' : 'bg-[#181818]'} text-sidebar-primary-foreground hover:bg-[#212121] hover:cursor-pointer`}
+            onClick={() => onNewChat ? onNewChat() : router.push('/')}
+            className="w-full justify-between gap-3 px-3 py-2.5 bg-transparent text-white hover:bg-white/5 transition-colors rounded-lg font-normal cursor-pointer group"
+          >
+            <div className="flex items-center gap-3">
+              <SquarePen size={20} className="flex-shrink-0" />
+              <span className="text-base">New chat</span>
+            </div>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity text-white/50">
+              <span className="text-xs">⌘</span>
+              <span className="text-xs">⇧</span>
+              <span className="text-xs">O</span>
+            </div>
+          </Button>
+
+          {/* Search Chats */}
+          <Button 
+            className="w-full justify-between gap-3 px-3 py-2.5 bg-transparent text-white hover:bg-white/5 transition-colors rounded-lg font-normal cursor-pointer group"
             onClick={() => setSearchMode(true)}
           >
-            <Search size={16}/>
-            {!isCollapsed && "Search chats"}
+            <div className="flex items-center gap-3">
+              <Search size={18} className="flex-shrink-0"/>
+              <span className="text-base">Search chats</span>
+            </div>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity text-white/50">
+              <span className="text-xs">⌘</span>
+              <span className="text-xs">K</span>
+            </div>
           </Button>
-        )}
-      </div>
 
-      {isCollapsed ? (
-        <div className="">
-        </div>
-      ) : (
-        <div className="px-5 text-sm font-medium text-[#747474]">
-          <span>Chats</span>
+          {/* Library */}
+          <Button 
+            className="w-full justify-start gap-3 px-3 py-2.5 bg-transparent text-white hover:bg-white/5 transition-colors rounded-lg font-normal"
+          >
+            <Layers size={18} className="flex-shrink-0"/>
+            Library
+          </Button>
+
+          {/* Projects with NEW badge */}
+          <Button 
+            className="w-full justify-between px-3 py-2.5 bg-transparent text-white hover:bg-white/5 transition-colors rounded-lg font-normal"
+          >
+            <div className="flex items-center gap-3">
+              <FolderOpen size={18} className="flex-shrink-0"/>
+              Projects
+            </div>
+            <span className="text-[10px] px-2 py-0.5 bg-white/10 rounded-full text-white/70 font-medium">NEW</span>
+          </Button>
         </div>
       )}
 
-      {/* Chats List */}
-      <ScrollArea className="flex-1">
-        <div className="space-y-1">
-          {isLoading ? (
-            <div className="flex justify-center p-4">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-            </div>
-          ) : (searchQuery ? chats.filter(chat => (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase())) : chats).length > 0 ? (
-            (searchQuery ? chats.filter(chat => (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase())) : chats).map((chat) => (
-              <div
-                key={chat._id}
-                className={`group relative w-full ${isCollapsed ? 'flex justify-center hover:cursor-pointer' : ''}`}
-              >
-                <Button
-                  variant="ghost"
-                  onClick={() => router.push(`/chat/${chat._id}`)}
-                  className={`w-full ${isCollapsed ? 'justify-center' : 'justify-start hover:cursor-pointer'} text-left h-auto p-3 text-sidebar-foreground hover:bg-sidebar-accent ${!isCollapsed ? 'pr-10' : ''}`}
+      {/* Collapsed state icons */}
+      {isCollapsed && (
+        <div className="px-2 space-y-2 flex flex-col items-center">
+          <Button 
+            onClick={() => onNewChat ? onNewChat() : router.push('/')}
+            className="h-9 w-9 p-0 bg-transparent text-white hover:bg-white/10 transition-colors rounded-lg"
+          >
+            <GoPencil size={18} />
+          </Button>
+          <Button 
+            onClick={() => setSearchMode(true)}
+            className="h-9 w-9 p-0 bg-transparent text-white hover:bg-white/10 transition-colors rounded-lg"
+          >
+            <Search size={18} />
+          </Button>
+          <Button 
+            className="h-9 w-9 p-0 bg-transparent text-white hover:bg-white/10 transition-colors rounded-lg"
+          >
+            <Layers size={18} />
+          </Button>
+          <Button 
+            className="h-9 w-9 p-0 bg-transparent text-white hover:bg-white/10 transition-colors rounded-lg"
+          >
+            <FolderOpen size={18} />
+          </Button>
+        </div>
+      )}
+
+
+
+      {/* Chats Section */}
+      {!searchMode && !isCollapsed && (
+        <>
+          {/* Chats Header - Collapsible */}
+          <div className="px-2 mt-6 mb-2">
+            <Button
+              onClick={() => setChatsExpanded(!chatsExpanded)}
+              className="w-full justify-start gap-2 px-3 py-2 bg-transparent text-white/70 hover:bg-white/5 transition-colors rounded-lg font-normal"
+            >
+                <span className="text-sm cursor-pointer">Chats</span>
+              {chatsExpanded ? (
+                <ChevronDown size={16} className="flex-shrink-0" />
+              ) : (
+                <ChevronRight size={16} className="flex-shrink-0" />
+              )}
+            
+            </Button>
+          </div>
+
+          {/* Chats List */}
+          {chatsExpanded && (
+            <ScrollArea className="flex-1 px-2">
+              <div className="space-y-0.5 pb-2">
+                {isLoading ? (
+                  <div className="flex justify-center p-4">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                  </div>
+                ) : chats.length > 0 ? (
+                  chats.map((chat) => (
+                <div
+                  key={chat._id}
+                  className="group relative hover:cursor-pointer"
                 >
-                  {!isCollapsed && (
-                    <div className="flex flex-col items-start min-w-0">
-                      <div className="text-sm font-medium w-full truncate">
-                        {chat.title ? chat.title.charAt(0).toUpperCase() + chat.title.slice(1) : 'New Chat'}
-                      </div>
+                  {renamingChat?.id === chat._id ? (
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <input
+                        type="text"
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveRename()
+                          if (e.key === 'Escape') cancelRename()
+                        }}
+                        onBlur={saveRename}
+                        className="flex-1 bg-[#2a2a2a] text-white text-sm px-2 py-1 rounded border border-white/20 outline-none focus:border-white/40"
+                        autoFocus
+                      />
                     </div>
-                  )}
-                </Button>
-                
-                {!isCollapsed && (
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  ) : (
+                    <>
+                      <Button
+                        onClick={() => router.push(`/chat/${chat._id}`)}
+                        className="w-full justify-start px-3 py-2 text-left h-auto text-white/80 hover:bg-white/5 transition-colors rounded-lg group bg-transparent cursor-pointer"
+                      >
+                        <div className="flex items-center min-w-0 w-full">
+                          <div className="text-sm font-normal w-full truncate group-hover:text-white transition-colors">
+                            {chat.title ? chat.title.charAt(0).toUpperCase() + chat.title.slice(1) : 'New Chat'}
+                          </div>
+                        </div>
+                      </Button>
+                      
+                      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 hover:bg-[#212121] hover:cursor-pointer"
+                          className="h-6 w-6 p-0 hover:bg-white/10 hover:cursor-pointer rounded-md"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent 
-                        className="w-48 bg-[#2f2f2f] border-[#404040] text-white"
-                        align="start"
-                        side="right"
-                      >
-                        <DropdownMenuItem 
-                          className="flex items-center gap-2 hover:bg-[#404040] cursor-pointer hover:cursor-pointer"
-                          onClick={(e) => handleShare(chat._id, e)}
+                        <DropdownMenuContent 
+                          className="w-48 bg-[#2c2c2c] border-white/10 text-white shadow-lg z-50"
+                          align="end"
+                          side="right"
+                          sideOffset={5}
                         >
-                          <Share className="h-4 w-4" />
-                          Share
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="flex items-center gap-2 hover:bg-[#404040] cursor-pointer hover:cursor-pointer"
-                          onClick={(e) => handleRename(chat._id, chat.title, e)}
-                        >
-                          <Edit className="h-4 w-4" />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="flex items-center gap-2 hover:bg-[#404040] cursor-pointer"
-                          onClick={(e) => handleArchive(chat._id, e)}
-                        >
-                          <Archive className="h-4 w-4" />
-                          Archive
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="flex items-center gap-2 hover:bg-[#404040] cursor-pointer text-red-400 hover:text-red-300"
-                          onClick={(e) => handleDelete(chat._id, e)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            !isCollapsed && (
-              <div className="px-3 py-2 text-sm text-sidebar-foreground/60">
+                          <DropdownMenuItem 
+                            className="flex items-center gap-3 hover:bg-white/10 cursor-pointer px-3 py-2 text-sm transition-colors"
+                            onClick={(e) => handleShare(chat._id, e)}
+                          >
+                            <Share className="h-4 w-4 text-white/60" />
+                            Share
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="flex items-center gap-3 hover:bg-white/10 cursor-pointer px-3 py-2 text-sm transition-colors"
+                            onClick={(e) => handleRename(chat._id, chat.title, e)}
+                          >
+                            <Edit className="h-4 w-4 text-white/60" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="flex items-center gap-3 hover:bg-white/10 cursor-pointer px-3 py-2 text-sm transition-colors"
+                            onClick={(e) => handleArchive(chat._id, e)}
+                          >
+                            <Archive className="h-4 w-4 text-white/60" />
+                            Archive
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="flex items-center gap-3 hover:bg-red-500/20 cursor-pointer px-3 py-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+                            onClick={(e) => handleDelete(chat._id, e)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    </>
+                  )}
+                </div>
+                  ))
+                ) : (
+              <div className="px-3 py-8 text-center text-sm text-white/40">
                 No chats yet
               </div>
-            )
+            )}
+          </div>
+        </ScrollArea>
           )}
-        </div>
-      </ScrollArea>
+        </>
+      )}
 
       {/* Bottom Section */}
-      <div className="p-2 mt-auto">
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} p-2 rounded-md hover:bg-sidebar-accent cursor-pointer`}>
-          {isCollapsed ? <UserIcon size={16}/> : <UserDropdown />}
+      <div className="p-3 mt-auto  ">
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors`}>
+          {isCollapsed ? <UserIcon size={18} className="text-white/70"/> : <UserDropdown />}
         </div>
       </div>
 
-      {/* Rename Modal */}
-      {renamingChat && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#2f2f2f] rounded-lg p-6 w-[450px] mx-4">
-            <h2 className="text-lg font-medium text-white mb-4">Rename chat</h2>
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full bg-[#404040] text-white border border-white/20 rounded-md px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 "
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveRename()
-                if (e.key === 'Escape') cancelRename()
+      {/* Search Modal */}
+      {searchMode && (
+        <div className="fixed inset-0 bg-[#212121] lg:bg-black/60 lg:flex lg:items-center lg:justify-center z-50">
+          <div className="bg-[#212121] lg:bg-[#2c2c2c] lg:rounded-2xl w-full lg:w-[680px] h-full lg:h-[440px] lg:mx-4 lg:shadow-2xl lg:border lg:border-white/10 flex flex-col">
+            {/* Search Header */}
+            <div className="p-4 lg:p-4 border-b border-white/10">
+              <div className="flex items-center gap-3 lg:px-4">
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search chats..."
+                  className="flex-1 bg-transparent outline-none text-white placeholder:text-white/40 text-base lg:text-base"
+                  autoFocus
+                />
+                <button 
+                  onClick={() => { setSearchMode(false); setSearchQuery(''); }} 
+                  className="text-white/60 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Search Results */}
+            <div 
+              className="flex-1 px-3 lg:p-4 py-4 max-h-full overflow-y-auto custom-scrollbar"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(255, 255, 255, 0.1) transparent',
               }}
-              autoFocus
-            />
-            <div className="flex justify-end gap-3">
-              <Button 
-                variant="outline" 
-                className="bg-transparent border-white/20 text-white hover:bg-white/10 hover:cursor-pointer"
-                onClick={cancelRename}
-              >
-                Cancel
-              </Button>
-              <Button 
-                className="bg-blue-500 hover:bg-blue-600 hover:cursor-pointer"
-                onClick={saveRename}
-                disabled={!newTitle.trim()}
-              >
-                Save
-              </Button>
+            >
+              {isLoading ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white/40"></div>
+                </div>
+              ) : (
+                <div className="space-y-4 lg:space-y-3">
+                  {/* New Chat Button */}
+                  <div className="bg-white/5 lg:bg-transparent rounded-lg lg:rounded-xl">
+                    <Button 
+                      onClick={() => {
+                        setSearchMode(false);
+                        setSearchQuery('');
+                        onNewChat ? onNewChat() : router.push('/');
+                      }}
+                      className="w-full justify-start gap-3 px-4 py-3.5 lg:py-3 bg-transparent text-white hover:bg-white/10 transition-colors rounded-lg lg:rounded-xl text-base font-normal"
+                    >
+                      <SquarePen size={20} className="flex-shrink-0 cursor-pointer" />
+                      New chat
+                    </Button>
+                  </div>
+                  {/* Today Section */}
+                  {chats.filter(chat => {
+                    if (!searchQuery) return true;
+                    return (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase());
+                  }).length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="font-normal text-white/40 text-sm px-2 py-1">Today</div>
+                      <div className="space-y-0.5">
+                        {chats.filter(chat => {
+                          if (!searchQuery) return true;
+                          return (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase());
+                        }).slice(0, 2).map((chat) => (
+                          <Button
+                            key={chat._id}
+                            variant="ghost"
+                            onClick={() => {
+                              setSearchMode(false);
+                              setSearchQuery('');
+                              router.push(`/chat/${chat._id}`);
+                            }}
+                            className="w-full justify-start gap-3 px-4 py-3 text-left h-auto text-white/80 hover:bg-white/5 transition-colors rounded-lg group bg-transparent cursor-pointer"
+                          >
+                            <MessageCircle size={18} className="flex-shrink-0 text-white/60" />
+                            <div className="flex flex-col items-start min-w-0 w-full">
+                              <div className="text-base font-normal w-full truncate group-hover:text-white transition-colors">
+                                {chat.title ? chat.title.charAt(0).toUpperCase() + chat.title.slice(1) : 'New Chat'}
+                              </div>
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Yesterday Section */}
+                  {chats.filter(chat => {
+                    if (!searchQuery) return true;
+                    return (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase());
+                  }).length > 2 && (
+                    <div className="space-y-1.5">
+                      <div className="font-normal text-white/40 text-sm px-2 py-1">Yesterday</div>
+                      <div className="space-y-0.5">
+                        {chats.filter(chat => {
+                          if (!searchQuery) return true;
+                          return (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase());
+                        }).slice(2, 3).map((chat) => (
+                          <Button
+                            key={chat._id}
+                            variant="ghost"
+                            onClick={() => {
+                              setSearchMode(false);
+                              setSearchQuery('');
+                              router.push(`/chat/${chat._id}`);
+                            }}
+                            className="w-full justify-start gap-3 px-4 py-3 text-left h-auto text-white/80 hover:bg-white/5 transition-colors rounded-lg group bg-transparent"
+                          >
+                            <MessageCircle size={18} className="flex-shrink-0 text-white/60" />
+                            <div className="flex flex-col items-start min-w-0 w-full">
+                              <div className="text-base font-normal w-full truncate group-hover:text-white transition-colors">
+                                {chat.title ? chat.title.charAt(0).toUpperCase() + chat.title.slice(1) : 'New Chat'}
+                              </div>
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Previous 7 Days Section */}
+                  {chats.filter(chat => {
+                    if (!searchQuery) return true;
+                    return (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase());
+                  }).length > 3 && (
+                    <div className="space-y-1.5">
+                      <div className="font-normal text-white/40 text-sm px-2 py-1">Previous 7 Days</div>
+                      <div className="space-y-0.5">
+                        {chats.filter(chat => {
+                          if (!searchQuery) return true;
+                          return (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase());
+                        }).slice(3, 4).map((chat) => (
+                          <Button
+                            key={chat._id}
+                            variant="ghost"
+                            onClick={() => {
+                              setSearchMode(false);
+                              setSearchQuery('');
+                              router.push(`/chat/${chat._id}`);
+                            }}
+                            className="w-full justify-start gap-3 px-4 py-3 text-left h-auto text-white/80 hover:bg-white/5 transition-colors rounded-lg group bg-transparent"
+                          >
+                            <MessageCircle size={18} className="flex-shrink-0 text-white/60" />
+                            <div className="flex flex-col items-start min-w-0 w-full">
+                              <div className="text-base font-normal w-full truncate group-hover:text-white transition-colors">
+                                {chat.title ? chat.title.charAt(0).toUpperCase() + chat.title.slice(1) : 'New Chat'}
+                              </div>
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Previous 30 Days Section */}
+                  {chats.filter(chat => {
+                    if (!searchQuery) return true;
+                    return (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase());
+                  }).length > 4 && (
+                    <div className="space-y-1.5">
+                      <div className="font-normal text-white/40 text-sm px-2 py-1">Previous 30 Days</div>
+                      <div className="space-y-0.5">
+                        {chats.filter(chat => {
+                          if (!searchQuery) return true;
+                          return (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase());
+                        }).slice(4).map((chat) => (
+                          <Button
+                            key={chat._id}
+                            variant="ghost"
+                            onClick={() => {
+                              setSearchMode(false);
+                              setSearchQuery('');
+                              router.push(`/chat/${chat._id}`);
+                            }}
+                            className="w-full justify-start gap-3 px-4 py-3 text-left h-auto text-white/80 hover:bg-white/5 transition-colors rounded-lg group bg-transparent"
+                          >
+                            <MessageCircle size={18} className="flex-shrink-0 text-white/60" />
+                            <div className="flex flex-col items-start min-w-0 w-full">
+                              <div className="text-base font-normal w-full truncate group-hover:text-white transition-colors">
+                                {chat.title ? chat.title.charAt(0).toUpperCase() + chat.title.slice(1) : 'New Chat'}
+                              </div>
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Results */}
+                  {searchQuery && chats.filter(chat => 
+                    (chat.title || 'New Chat').toLowerCase().includes(searchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <div className="text-center py-12 text-white/50">
+                      <div className="text-base">No chats found</div>
+                    </div>
+                  )}
+
+                  {/* Empty State */}
+                  {!searchQuery && chats.length === 0 && (
+                    <div className="text-center py-12 text-white/50">
+                      <div className="text-base">No chats yet</div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
+
+
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getAuth } from '@clerk/nextjs/server';
 import { Message as MessageModel } from '@/models/message';
 import { Chat } from '@/models/chat';
 import dbConnect from '@/lib/mongodb';
@@ -7,7 +7,7 @@ import mongoose from 'mongoose';
 
 // Get all messages for a chat
 export async function GET(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId } = getAuth(req);
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
 // Create a new message
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId } = getAuth(req);
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
 
 // Delete all messages for a chat (for cleanup)
 export async function DELETE(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId } = getAuth(req);
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
   }

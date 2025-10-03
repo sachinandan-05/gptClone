@@ -1,191 +1,33 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
-import { Paperclip, Send, Mic, X, Loader2, Globe, Plus, AudioLines } from "lucide-react"
-// Remove sonner toast for now to avoid dependency issues
+import { useState, useRef, useEffect } from "react"
+import { Plus, Mic, ArrowUp, Loader2 } from "lucide-react"
 
 interface ChatInputProps {
-  input?: string
-  isLoading?: boolean
-  disabled?: boolean
-  onInputChange?: (value: string) => void
-  onSendMessage?: (content: string, fileUrl?: string, fileType?: 'image' | 'document' | 'video' | 'audio' | 'other') => void
-  onFileUpload?: (files: FileList | null) => void
-  className?: string
-  variant?: 'default' | 'hero' | 'heroSingle'
+  input: string;
+  onInputChange: (value: string) => void;
+  onSendMessage: (content: string, fileUrl?: string, fileType?: string) => Promise<void>;
+  isLoading: boolean;
+  variant?: string;
+  disabled?: boolean;
 }
 
-const ALLOWED_FILE_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'application/pdf',
-  'text/plain',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/csv'
-];
-
-const MAX_FILE_SIZE_MB = 10; // 10MB
-
-export default function ChatInput({
-  input: externalInput,
-  isLoading = false,
-  disabled = false,
-  onInputChange,
-  onSendMessage,
-  onFileUpload,
-  className = '',
-  variant = 'default'
-}: ChatInputProps) {
-  const [internalInput, setInternalInput] = useState(externalInput || "")
-  const [isUploading, setIsUploading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
+export default function ChatInput({ input, onInputChange, onSendMessage, isLoading, variant, disabled = false }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const dropZoneRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const input = externalInput !== undefined ? externalInput : internalInput
-
-  const handleInputChange = (value: string) => {
-    if (onInputChange) {
-      onInputChange(value)
-    } else {
-      setInternalInput(value)
-    }
+  const handleSend = async () => {
+    if (!input.trim() || disabled) return
+    await onSendMessage(input)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.altKey) {
+    if (e.key === "Enter" && !e.shiftKey && !disabled) {
       e.preventDefault()
       handleSend()
     }
   }
 
-  const handleSend = async (e?: React.FormEvent) => {
-    e?.preventDefault?.()
-    const messageContent = input.trim()
-    if (!messageContent && !selectedFile) return
-    
-    // If there's a selected file, upload it first
-    if (selectedFile) {
-      try {
-        setIsUploading(true)
-        const formData = new FormData()
-        formData.append('file', selectedFile)
-        
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        })
-        
-        if (!response.ok) {
-          throw new Error('Upload failed')
-        }
-        
-        const data = await response.json()
-        const fileUrl = data.url
-        const fileType: 'image' | 'document' = data.resourceType === 'image' ? 'image' : 'document'
-        
-        if (onSendMessage) {
-          onSendMessage(messageContent, fileUrl, fileType)
-          setInternalInput("")
-          setSelectedFile(null)
-          setPreviewUrl(null)
-        }
-      } catch (error) {
-        console.error('Error uploading file:', error)
-      } finally {
-        setIsUploading(false)
-      }
-    } else if (onSendMessage) {
-      onSendMessage(messageContent)
-      setInternalInput("")
-    }
-  }
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-    
-    const file = files[0]
-    
-    // Validate file type
-    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-      console.error('File type not supported')
-      return
-    }
-    
-    // Validate file size (10MB)
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      console.error(`File too large. Max size: ${MAX_FILE_SIZE_MB}MB`)
-      return
-    }
-    
-    setSelectedFile(file)
-    
-    // Create preview for images
-    if (file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-    }
-    
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
-  
-  const removeFile = () => {
-    setSelectedFile(null)
-    setPreviewUrl(null)
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-    }
-  }
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(true)
-  }
-  
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-  }
-  
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-    
-    const files = e.dataTransfer.files
-    if (files && files.length > 0) {
-      const file = files[0]
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(file)
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.files = dataTransfer.files
-        const event = new Event('change', { bubbles: true })
-        fileInputRef.current.dispatchEvent(event)
-      }
-    }
-  }
-
-  const handleFileClick = () => {
-    fileInputRef.current?.click()
-  }
-
-  // auto-grow textarea like ChatGPT
-  const adjustTextareaHeight = () => {
+  const adjustHeight = () => {
     const textarea = textareaRef.current
     if (textarea) {
       textarea.style.height = "auto"
@@ -194,292 +36,57 @@ export default function ChatInput({
   }
 
   useEffect(() => {
-    adjustTextareaHeight()
+    adjustHeight()
   }, [input])
 
-  // Clean up object URLs on unmount
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl)
-      }
-    }
-  }, [previewUrl])
-
-  const handleFileUpload = async () => {
-    if (!selectedFile) return
-    
-    try {
-      setIsUploading(true)
-      const formData = new FormData()
-      formData.append('file', selectedFile)
-      
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-      
-      if (!response.ok) {
-        throw new Error('Upload failed')
-      }
-      
-      const data = await response.json()
-      const fileUrl = data.url
-      let fileType: 'image' | 'document' | 'video' | 'audio' | 'other' = 'other'
-      
-      if (selectedFile.type.startsWith('image/')) {
-        fileType = 'image'
-      } else if (selectedFile.type.startsWith('audio/')) {
-        fileType = 'audio'
-      } else if (selectedFile.type.startsWith('video/')) {
-        fileType = 'video'
-      } else if (selectedFile.type.includes('pdf') || 
-                selectedFile.type.includes('text') || 
-                selectedFile.type.includes('word') || 
-                selectedFile.type.includes('excel') || 
-                selectedFile.type.includes('sheet') || 
-                selectedFile.type.includes('document')) {
-        fileType = 'document'
-      }
-      
-      if (onSendMessage) {
-        onSendMessage(input.trim() || `[File: ${selectedFile.name}]`, fileUrl, fileType)
-      }
-      
-      setInternalInput("")
-      setSelectedFile(null)
-      setPreviewUrl(null)
-    } catch (error) {
-      console.error('Error uploading file:', error)
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
   return (
-    <div className={`w-full max-w-4xl mx-auto ${(variant === 'hero' || variant === 'heroSingle') ? 'px-2 sm:px-4' : 'p-1 px-2 sm:px-4'}`}>
-      {/* File Preview */}
-      {previewUrl && selectedFile?.type.startsWith('image/') && (
-        <div className="relative mb-2 w-full max-w-3xl mx-auto">
-          <div className="relative inline-block">
-            <img
-              src={previewUrl}
-              alt="Preview"
-              className="max-h-40 max-w-full rounded-lg object-contain border border-gray-600"
-            />
-            <button
-              onClick={removeFile}
-              className="absolute -top-2 -right-2 bg-gray-700 rounded-full p-1 hover:bg-gray-600 transition-colors"
-              aria-label="Remove image"
-            >
-              <X className="w-4 h-4 text-white" />
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {selectedFile && !selectedFile.type.startsWith('image/') && (
-        <div className="relative mb-2 w-full max-w-3xl mx-auto px-2 sm:px-4">
-          <div className="inline-flex items-center bg-gray-800 rounded-lg px-3 py-2 border border-gray-600 w-full">
-            <Paperclip className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="text-sm text-gray-200 truncate flex-1 max-w-[200px] sm:max-w-md">
-              {selectedFile.name}
-            </span>
-            <button
-              onClick={removeFile}
-              className="ml-2 text-gray-400 hover:text-white flex-shrink-0"
-              aria-label="Remove file"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
+    <div className="w-full max-w-4xl mx-auto px-4">
+      <div className="relative flex items-end gap-2 bg-[#3a3a3a] rounded-full px-3 py-2 sm:px-4 sm:py-3 shadow-lg">
+        {/* Left: Plus button */}
+        <button
+          type="button"
+          className="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
 
-      {/* Main Input Container */}
-      <div 
-        ref={dropZoneRef}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`relative w-full max-w-3xl mx-auto ${
-          variant === 'hero'
-            ? 'bg-[#2f2f2f] rounded-[28px] shadow-2xl border border-white/5 px-4 py-4 sm:px-5 sm:py-4'
-            : variant === 'heroSingle'
-            ? 'bg-[#2f2f2f] rounded-[28px] shadow-2xl border border-white/5 px-3 sm:px-4 py-2 sm:py-3 flex items-center'
-            : 'bg-[#303030] rounded-3xl shadow-lg px-2 py-1.5 sm:px-3 sm:py-2 flex items-end'
-        } ${
-          isDragging ? 'ring-2 ring-blue-500' : ''
-        }`}
-      >
-        {/* Hidden file input */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-          accept={ALLOWED_FILE_TYPES.join(',')}
+        {/* Textarea */}
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={(e) => onInputChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask anything"
+          rows={1}
+          disabled={disabled}
+          className="flex-1 bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-base leading-6 max-h-[200px] overflow-y-auto mb-1 disabled:opacity-50 disabled:cursor-not-allowed"
         />
-        {variant === 'hero' ? (
-          <div className="w-full flex flex-col gap-3">
-            <div className="w-full px-1">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => {
-                  handleInputChange(e.target.value)
-                  adjustTextareaHeight()
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask anything"
-                disabled={isLoading}
-                className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-base sm:text-lg leading-6 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-track-transparent pr-1"
-                rows={1}
-              />
-            </div>
-            <div className="w-full flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading || disabled || isUploading}
-                  className="px-3 py-2 rounded-full border border-white/10 text-white/90 hover:border-white/20 transition-colors"
-                  aria-label="Attach file"
-                >
-                  <span className="flex items-center gap-2 text-sm"><Paperclip className="w-4 h-4" /> Attach</span>
-                </button>
-                <button
-                  type="button"
-                  className="px-3 py-2 rounded-full border border-white/10 text-white/90 hover:border-white/20 transition-colors"
-                  disabled
-                >
-                  <span className="flex items-center gap-2 text-sm"><Globe className="w-4 h-4" /> Search</span>
-                </button>
-              </div>
-              <button
-                type="button"
-                className="px-3 py-2 rounded-full  text-white/90 hover:border-white/20 transition-colors"
-                disabled={isLoading || disabled || isUploading}
-                aria-label="Voice input"
-              >
-                <span className="flex items-center gap-2 text-sm"><Mic className="w-4 h-4" /> Voice</span>
-              </button>
-            </div>
-          </div>
-        ) : variant === 'heroSingle' ? (
-          <>
-            {/* Left plus */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading || disabled || isUploading}
-              className="mr-2 flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full   text-white/90 hover:border-white/20 flex items-center justify-center cursor-pointer hover:shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
-              aria-label="Attach"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            {/* Input */}
-            <div className="flex-1 px-2">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => {
-                  handleInputChange(e.target.value)
-                  adjustTextareaHeight()
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask anything"
-                disabled={isLoading}
-                className="w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-base sm:text-lg leading-6 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-track-transparent"
-                rows={1}
-              />
-            </div>
-            {/* Right icons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full  text-white/90 hover:border-white/20 flex items-center justify-center cursor-pointer hover:shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
-                disabled={isLoading || disabled || isUploading}
-                aria-label="Voice"
-              >
-                <Mic className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={isLoading || disabled || isUploading || (!input?.trim() && !selectedFile)}
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 border border-white/10 text-white/90 hover:border-white/20 flex items-center justify-center disabled:opacity-50 cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.25)]"
-                aria-label="Send"
-              >
-                <AudioLines className="w-4 h-4" />
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Left controls */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading || disabled || isUploading}
-                className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-600 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Attach file"
-              >
-                {isUploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Paperclip className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-            {/* Text Input Area */}
-            <div className="flex-1  px-2">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => {
-                  handleInputChange(e.target.value)
-                  adjustTextareaHeight()
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask anything"
-                disabled={isLoading}
-                className={`w-full bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-sm sm:text-base leading-6 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-track-transparent pr-1`}
-                rows={1}
-              />
-            </div>
-            {/* Right Side Icons */}
-            <div className="flex items-center gap-2 flex-shrink-0 pb-1">
-              <button
-                type="button"
-                className="p-1.5 sm:p-2 rounded-full hover:bg-gray-600 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isLoading || disabled || isUploading}
-                aria-label="Voice input"
-              >
-                <Mic className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={isLoading || disabled || isUploading || (!input?.trim() && !selectedFile)}
-                className={`p-1.5 sm:p-2 text-white rounded-full transition-colors ${
-                  (input?.trim() || selectedFile) && !isLoading && !isUploading
-                    ? 'bg-none hover:bg-gray-600'
-                    : 'bg-none cursor-not-allowed'
-                }`}
-                aria-label="Send message"
-              >
-              {isLoading || isUploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <AudioLines className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          </>
+
+        {/* Mic button (always visible) */}
+        <button
+          type="button"
+          disabled={disabled}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Mic className="w-5 h-5 hover:text-white" />
+        </button>
+
+        {/* Send button (only shows if input exists) */}
+        {input.trim() && (
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={isLoading || disabled}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-white text-black hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <ArrowUp className="w-5 h-5" />
+            )}
+          </button>
         )}
-    </div>
+      </div>
     </div>
   )
 }

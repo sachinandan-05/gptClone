@@ -149,19 +149,19 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
         {props.children}
       </p>
     ),
-    ul: (props) => (
+    ul: ({ children, ...props }) => (
       <ul className="list-disc list-inside text-gray-200 mb-4 space-y-1" {...props}>
-        {props.children}
+        {children}
       </ul>
     ),
-    ol: (props) => (
+    ol: ({ children, ...props }) => (
       <ol className="list-decimal list-inside text-gray-200 mb-4 space-y-1" {...props}>
-        {props.children}
+        {children}
       </ol>
     ),
-    li: (props) => (
+    li: ({ children, node, ...props }) => (
       <li className="text-gray-200" {...props}>
-        {props.children}
+        {children}
       </li>
     ),
     blockquote: (props) => (

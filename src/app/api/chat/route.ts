@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai';
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getAuth } from '@clerk/nextjs/server';
 import mongoose from 'mongoose';
 import { Chat } from '@/models/chat';
 import { Message as MessageModel } from '@/models/message';
@@ -44,8 +44,7 @@ export async function POST(req: NextRequest) {
   console.log('Chat API request received');
   
   try {
-    const authResult = await auth();
-    const userId = authResult?.userId;
+    const { userId } = getAuth(req);
     const isGuest = !userId;
     
     console.log(`Processing request for ${isGuest ? 'guest' : 'user'}: ${userId || 'N/A'}`);
@@ -467,35 +466,47 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) return new NextResponse('Unauthorized', { status: 401 });
+  const { userId } = getAuth(req);
+  const { searchParams } = new URL(req.url);
+  const guestId = searchParams.get('guestId');
+  const isGuest = !userId;
+
+  // Either userId or guestId must be provided
+  if (!userId && !guestId) {
+    return new NextResponse('Unauthorized - either user authentication or guestId required', { status: 401 });
+  }
 
   try {
     await dbConnect();
-    const { searchParams } = new URL(req.url);
     const chatId = searchParams.get('chatId');
 
     if (chatId) {
       // Fetch messages for a chat
-      const messages = await MessageModel.find({
-        chatId: new mongoose.Types.ObjectId(chatId),
-        userId,
-      })
+      const messageQuery = isGuest 
+        ? { chatId: new mongoose.Types.ObjectId(chatId), guestId }
+        : { chatId: new mongoose.Types.ObjectId(chatId), userId };
+        
+      const messages = await MessageModel.find(messageQuery)
         .sort({ timestamp: 1 })
         .lean();
       return NextResponse.json({ messages });
     }
 
     // Fetch all chats with last message
-    const chats = await Chat.find({ userId })
+    const chatQuery = isGuest ? { guestId } : { userId };
+    const chats = await Chat.find(chatQuery)
       .sort({ updatedAt: -1 })
       .select('title _id updatedAt')
       .lean();
 
     const chatsWithLastMessage = await Promise.all(
       chats.map(async (chat) => {
+        const lastMessageQuery = isGuest 
+          ? { chatId: chat._id, guestId }
+          : { chatId: chat._id, userId };
+          
         const lastMessage = await MessageModel.findOne(
-          { chatId: chat._id },
+          lastMessageQuery,
           { content: 1, role: 1, timestamp: 1 },
           { sort: { timestamp: -1 } }
         ).lean();
