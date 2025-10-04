@@ -126,12 +126,22 @@ export async function POST(req: NextRequest) {
         try {
           console.log(`[Memory Search] Searching memories for: "${contentText.substring(0, 50)}..."`);
           
+          // Calculate timestamp for 7 days ago
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          console.log(`[Memory Search] Filtering memories from the last 7 days (since: ${sevenDaysAgo.toISOString()})`);
+          
           const relevantMemories = await mem0.search(contentText, {
             user_id: userId,
             limit: 5,
+            filters: {
+              created_at: {
+                gte: sevenDaysAgo.toISOString()
+              }
+            }
           });
 
-          console.log(`[Memory Search] Found ${relevantMemories?.length || 0} potential memories`);
+          console.log(`[Memory Search] Found ${relevantMemories?.length || 0} potential memories from the last 7 days`);
 
           const stop = new Set([
             "the","a","an","and","or","to","of","in","on","for","with","is","it","this","that","what","explain","please","help","do","you","i","me","my"

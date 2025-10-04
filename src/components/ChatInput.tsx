@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Plus, Mic, ArrowUp, Loader2, X, FileText, FileImage } from "lucide-react"
+import { Plus, Mic, ArrowUp, Loader2, X, FileText } from "lucide-react"
 
 interface ChatInputProps {
   input: string;
@@ -141,7 +141,7 @@ export default function ChatInput({ input, onInputChange, onSendMessage, isLoadi
     const textarea = textareaRef.current
     if (textarea) {
       textarea.style.height = "auto"
-      textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"
+      textarea.style.height = textarea.scrollHeight + "px"
     }
   }
 
@@ -184,7 +184,7 @@ export default function ChatInput({ input, onInputChange, onSendMessage, isLoadi
         </div>
       )}
 
-      <div className="relative flex items-end gap-2 bg-[#3a3a3a] rounded-full px-3 py-2 sm:px-4 sm:py-3 shadow-lg">
+      <div className="relative flex items-end gap-2 bg-[#3a3a3a] rounded-3xl px-3 py-2 sm:px-4 sm:py-3 shadow-lg">
         {/* Left: Plus button */}
         <input
           ref={fileInputRef}
@@ -207,12 +207,16 @@ export default function ChatInput({ input, onInputChange, onSendMessage, isLoadi
         <textarea
           ref={textareaRef}
           value={input}
-          onChange={(e) => onInputChange(e.target.value)}
+          onChange={(e) => {
+            onInputChange(e.target.value)
+            adjustHeight()
+          }}
           onKeyDown={handleKeyDown}
-          placeholder="Ask anything"
+          placeholder="Message ChatGPT..."
           rows={1}
           disabled={disabled}
-          className="flex-1 bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-base leading-6 max-h-[200px] overflow-y-auto mb-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 mb-2 bg-transparent text-white placeholder-gray-400 border-none outline-none resize-none text-base leading-6 max-h-[200px] overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full"
+          style={{ minHeight: "24px" }}
         />
 
         {/* Mic button (always visible) */}
@@ -235,7 +239,7 @@ export default function ChatInput({ input, onInputChange, onSendMessage, isLoadi
             {isLoading || uploadingFile ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <ArrowUp className="w-5 h-5" />
+              <ArrowUp className="w-5 h-5 hover:cursor-pointer" />
             )}
           </button>
         )}

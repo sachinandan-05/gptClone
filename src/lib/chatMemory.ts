@@ -88,13 +88,22 @@ export async function getSharedUserMemory(userId: string): Promise<ChatMemory | 
 
     console.log(`[Memory] Retrieving memories for user: ${userId}`);
 
-    // Get all memories for this user
+    // Calculate timestamp for 7 days ago
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // Get all memories for this user from the last 7 days
     const allMemories = await mem0.getAll({
       user_id: userId,
-      limit: 100 // Adjust limit as needed
+      limit: 100, // Adjust limit as needed
+      filters: {
+        created_at: {
+          gte: sevenDaysAgo.toISOString()
+        }
+      }
     }) as unknown as MemoryResult[];
     
-    console.log(`[Memory] Retrieved ${allMemories?.length || 0} memory entries`);
+    console.log(`[Memory] Retrieved ${allMemories?.length || 0} memory entries from the last 7 days`);
     
     if (!Array.isArray(allMemories) || allMemories.length === 0) {
       console.log('[Memory] No memories found for user');
