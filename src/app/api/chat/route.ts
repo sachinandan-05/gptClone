@@ -246,7 +246,7 @@ export async function POST(req: NextRequest) {
               role: "user",
               content: [
                 { type: "text", text: text || "Describe this image" },
-                { type: "image_url", image_url: m.fileUrl }
+                { type: "image_url", image_url: { url: m.fileUrl } }
               ] as any,
             };
           }
@@ -293,14 +293,26 @@ export async function POST(req: NextRequest) {
           }
 
           // Save user message
-          const userMsgDoc = await MessageModel.create({
-            chatId: new mongoose.Types.ObjectId(currentChatId),
-            userId: isGuest ? undefined : userId,
-            guestId: isGuest ? guestId : undefined,
-            role: "user",
-            content: userMessage.content,
-            timestamp: new Date(),
-          });
+          let userMsgDoc;
+          try {
+            userMsgDoc = await MessageModel.create({
+              chatId: new mongoose.Types.ObjectId(currentChatId),
+              userId: isGuest ? undefined : userId,
+              guestId: isGuest ? guestId : undefined,
+              role: "user",
+              content: userMessage.content,
+              fileUrl: userMessage.fileUrl || undefined,
+              fileType: userMessage.fileType || undefined,
+              timestamp: new Date(),
+            });
+          } catch (validationError: any) {
+            console.error('Error creating user message:', validationError);
+            if (validationError.name === 'ValidationError') {
+              console.error('Validation details:', validationError.errors);
+              throw new Error(`Invalid message data: ${validationError.message}`);
+            }
+            throw validationError;
+          }
 
           await Chat.findByIdAndUpdate(currentChatId, {
             $push: { messages: userMsgDoc._id },
@@ -309,6 +321,8 @@ export async function POST(req: NextRequest) {
 
           // Call OpenAI / OpenRouter (streaming)
           let aiStream: AsyncIterable<any> | undefined;
+          const hasImage = userMessage?.fileUrl && userMessage?.fileType === 'image';
+          
           if (hasOpenAI) {
             try {
               aiStream = await openai.chat.completions.create({
@@ -319,17 +333,36 @@ export async function POST(req: NextRequest) {
                 temperature: 0.7,
               });
             } catch (error) {
+              console.error('OpenAI streaming error:', error);
               if (!hasOpenRouter) throw error;
             }
           }
           if (!aiStream && hasOpenRouter) {
-            aiStream = await openrouter.chat.completions.create({
-              model: "openai/gpt-4o",
-              messages: openAIMessages,
-              stream: true,
-              max_tokens: 1000,
-              temperature: 0.7,
-            });
+            try {
+              // OpenRouter might not support vision well, use text-only model for images
+              const model = hasImage ? "openai/gpt-3.5-turbo" : "openai/gpt-4o";
+              const messages = hasImage 
+                ? openAIMessages.map(msg => {
+                    if (Array.isArray(msg.content)) {
+                      // Extract just the text for OpenRouter
+                      const textPart = msg.content.find((part: any) => part.type === 'text');
+                      return { ...msg, content: textPart?.text || 'Describe the uploaded image' };
+                    }
+                    return msg;
+                  })
+                : openAIMessages;
+              
+              aiStream = await openrouter.chat.completions.create({
+                model,
+                messages,
+                stream: true,
+                max_tokens: 1000,
+                temperature: 0.7,
+              });
+            } catch (error) {
+              console.error('OpenRouter streaming error:', error);
+              throw new Error('Failed to get response from AI providers. Please try again.');
+            }
           }
 
           // If no provider produced a stream, end gracefully

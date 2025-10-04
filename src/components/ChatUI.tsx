@@ -458,32 +458,39 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                 {visibleMessages.map((message, index) => (
                   <div 
                     key={message.id || `message-${index}-${Date.now()}`}
-                    className={`group flex flex-col w-full ${message.role === 'assistant' ? 'items-start' : 'items-end'}`}
+                    className={`group flex flex-col w-full ${message.role === 'assistant' ? 'items-start' : 'items-end '}`}
                   >
                     <div
                       className={`relative max-w-[calc(100%-2rem)] sm:max-w-[80%] rounded-lg px-4 break-words overflow-x-hidden ${
-                        message.role === 'user' ? 'bg-[#303030] py-' : 'bg-none '
+                        message.role === 'user' ? 'bg-[#303030] pt-2' : 'bg-none '
                       } ${message.role === 'user' ? 'shadow-[0_8px_30px_rgba(0,0,0,0.2)]' : ''}`}
                     >
                       {message.fileUrl && message.fileType === 'image' && (
-                        <div key={`image-${message.id}`} className="mb-2">
+                        <div className="mb-3 mt-2">
                           <img
                             src={message.fileUrl}
-                            alt="Uploaded content"
-                            className="max-h-60 max-w-full rounded-md object-contain"
+                            alt="Uploaded image"
+                            className="max-h-80 max-w-full rounded-lg object-contain bg-gray-800 border border-gray-700"
+                            onError={(e) => {
+                              console.error('Image failed to load:', message.fileUrl);
+                              e.currentTarget.style.display = 'none';
+                            }}
+                            onLoad={(e) => {
+                              console.log('Image loaded successfully:', message.fileUrl);
+                            }}
                           />
                         </div>
                       )}
                       {message.fileUrl && message.fileType === 'document' && (
-                        <div key={`doc-${message.id}`} className="mb-2 p-2 bg-white/10 rounded-md">
+                        <div className="mb-3 mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
                           <a
                             href={message.fileUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-300 hover:underline flex items-center"
+                            className="text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-2 font-medium"
                           >
-                            <Paperclip className="w-4 h-4 mr-1" />
-                            View Document
+                            <Paperclip className="w-5 h-5" />
+                            <span>View Document</span>
                           </a>
                         </div>
                       )}
@@ -534,7 +541,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
                     </div>
                     
                     {/* Action buttons outside the bubble */}
-                    <div className={`flex gap-2 mt-1 ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`flex gap-2 mt-1 ${message.role === 'assistant' ? 'justify-start' : 'justify-end' }`}>
                       {message.role === 'user' ? (
                         <>
                           <Tooltip>
@@ -620,7 +627,7 @@ export default function ChatUI({ initialMessages = [], chatId, initialInput = ''
 
         {!isEmptyLike && (
           <div className="w-full">
-            <div className="w-full max-w-3xl mx-auto px-4 sm:px-6">
+            <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 mb-6">
               <ChatInput
                 input={input}
                 onInputChange={setInput}

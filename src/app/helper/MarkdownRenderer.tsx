@@ -37,7 +37,7 @@ function CodeBlock({ children, className = '', language, ...props }: CodeBlockPr
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Language label and copy button header */}
-      <div className="flex items-center justify-between bg-gray-800 px-4 py-2 text-sm text-gray-300 rounded-t-lg border-b border-gray-700">
+      <div className="flex items-center justify-between bg-gray-800 px-4 py-2 text-sm text-gray-300 rounded-t-lg border-b border-gray-700 ">
         <span className="font-mono text-xs uppercase tracking-wide">
           {language || 'code'}
         </span>
@@ -200,8 +200,16 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     td: (props) => (
       <td className="border border-gray-600 px-4 py-2 text-gray-200" {...props}>
         {props.children}
-
       </td>
+    ),
+    img: ({ src, alt, ...props }) => (
+      <img 
+        src={src} 
+        alt={alt || 'Image'} 
+        className="max-w-full h-auto rounded-lg my-4 border border-gray-700"
+        loading="lazy"
+        {...props}
+      />
     )
   };
 
