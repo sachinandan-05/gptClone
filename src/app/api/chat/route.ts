@@ -122,33 +122,72 @@ export async function POST(req: NextRequest) {
       const isGenericPrompt =
         contentText.length < 12 || /^(explain|what\s+is\s+this|help|this|that)\b/i.test(contentText);
 
-      if (!isGuest && contentText && !hasAttachment && !isGenericPrompt) {
+      if (!isGuest && contentText && !hasAttachment && !isGenericPrompt && process.env.MEM0_API_KEY) {
         try {
+          console.log(`[Memory Search] Searching memories for: "${contentText.substring(0, 50)}..."`);
+          
           const relevantMemories = await mem0.search(contentText, {
             user_id: userId,
             limit: 5,
           });
 
+          console.log(`[Memory Search] Found ${relevantMemories?.length || 0} potential memories`);
+
           const stop = new Set([
-            "the","a","an","and","or","to","of","in","on","for","with","is","it","this","that","what","explain","please","help"
+            "the","a","an","and","or","to","of","in","on","for","with","is","it","this","that","what","explain","please","help","do","you","i","me","my"
           ]);
           const userTokens = new Set(
             contentText.toLowerCase().split(/\W+/).filter(t => t && !stop.has(t))
           );
 
+          console.log(`[Memory Search] Query tokens after filtering:`, Array.from(userTokens));
+
+          // Use Mem0's relevance scoring - if they returned it, it's likely relevant
+          // Only do light filtering to remove obviously unrelated memories
           const filtered: string[] = Array.isArray(relevantMemories)
             ? relevantMemories
-                .map((m: any) => m?.memory?.toString?.() || "")
+                .map((m: any) => {
+                  const memStr = m?.memory?.toString?.() || "";
+                  console.log(`[Memory Search] Evaluating memory: "${memStr}"`);
+                  return memStr;
+                })
                 .filter(Boolean)
                 .filter((mem: string) => {
                   const memTokens = new Set(
                     mem.toLowerCase().split(/\W+/).filter((t: string) => t && !stop.has(t))
                   );
-                  for (const t of userTokens) if (memTokens.has(t)) return true;
+                  console.log(`[Memory Search] Memory tokens:`, Array.from(memTokens));
+                  
+                  // Much more lenient: if ANY token matches, or if the memory is very short (likely a fact)
+                  if (mem.length < 50) {
+                    console.log(`[Memory Search] ✓ Short memory, likely relevant fact`);
+                    return true; // Short memories are likely important facts
+                  }
+                  
+                  for (const t of userTokens) {
+                    if (memTokens.has(t)) {
+                      console.log(`[Memory Search] ✓ Token match found: "${t}"`);
+                      return true;
+                    }
+                  }
+                  
+                  // Also check for partial matches (e.g., "like" matches "likes")
+                  for (const ut of userTokens) {
+                    for (const mt of memTokens) {
+                      if (ut.length > 3 && (mt.includes(ut) || ut.includes(mt))) {
+                        console.log(`[Memory Search] ✓ Partial match: "${ut}" ↔ "${mt}"`);
+                        return true;
+                      }
+                    }
+                  }
+                  
+                  console.log(`[Memory Search] ✗ No match found, filtering out`);
                   return false;
                 })
-                .slice(0, 2)
+                .slice(0, 3) // Increased from 2 to 3
             : [];
+
+          console.log(`[Memory Search] Using ${filtered.length} relevant memories as context:`, filtered);
 
           for (const mem of filtered) {
             contextMessages.push({
@@ -157,8 +196,13 @@ export async function POST(req: NextRequest) {
             });
           }
         } catch (err) {
-          console.error("Error searching memories:", err);
+          console.error("[Memory Search] Error searching memories:", err);
+          if (err instanceof Error) {
+            console.error("[Memory Search] Error details:", err.message);
+          }
         }
+      } else if (!isGuest && !process.env.MEM0_API_KEY) {
+        console.warn("[Memory Search] MEM0_API_KEY not configured, skipping memory search");
       }
     }
 
@@ -169,12 +213,18 @@ export async function POST(req: NextRequest) {
       timestamp: new Date(),
     }));
 
-    if (!isGuest) {
-      await saveChatMemory({
+    if (!isGuest && process.env.MEM0_API_KEY) {
+      console.log('[Memory] Saving initial user message to memory');
+      const saved = await saveChatMemory({
         chatId: chatId || "new",
         userId,
         messages: currentMessages,
       });
+      if (saved) {
+        console.log('[Memory] Initial message saved successfully');
+      } else {
+        console.warn('[Memory] Failed to save initial message');
+      }
     }
 
     // --- Format OpenAI messages (support multimodal image inputs) ---
@@ -321,12 +371,18 @@ export async function POST(req: NextRequest) {
               $set: { updatedAt: new Date() },
             });
 
-            if (!isGuest) {
+            if (!isGuest && process.env.MEM0_API_KEY) {
               const updatedMessages = [
                 ...currentMessages,
                 { role: "assistant" as MessageRole, content: assistantReply, timestamp: new Date() },
               ];
-              await saveChatMemory({ chatId: currentChatId, userId, messages: updatedMessages });
+              console.log('[Memory] Saving conversation to memory after streaming response');
+              const saved = await saveChatMemory({ chatId: currentChatId, userId, messages: updatedMessages });
+              if (saved) {
+                console.log('[Memory] Conversation saved successfully');
+              } else {
+                console.warn('[Memory] Failed to save conversation');
+              }
             }
           }
 
@@ -426,12 +482,18 @@ export async function POST(req: NextRequest) {
         $set: { updatedAt: new Date() },
       });
 
-      if (!isGuest) {
+      if (!isGuest && process.env.MEM0_API_KEY) {
         const updatedMessages = [
           ...currentMessages,
           { role: "assistant" as MessageRole, content: aiResponse, timestamp: new Date() },
         ];
-        await saveChatMemory({ chatId: currentChatId, userId, messages: updatedMessages });
+        console.log('[Memory] Saving conversation to memory after non-streaming response');
+        const saved = await saveChatMemory({ chatId: currentChatId, userId, messages: updatedMessages });
+        if (saved) {
+          console.log('[Memory] Conversation saved successfully');
+        } else {
+          console.warn('[Memory] Failed to save conversation');
+        }
       }
     }
 

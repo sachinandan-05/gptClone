@@ -43,11 +43,23 @@ const filterSystemMessages = (messages: ChatMessage[]): Array<{ role: 'user' | '
 
 export async function saveChatMemory(chatMemory: ChatMemory): Promise<boolean> {
   try {
+    if (!process.env.MEM0_API_KEY) {
+      console.warn('MEM0_API_KEY not configured, skipping memory save');
+      return false;
+    }
+
     // Filter out system messages and prepare for mem0
     const messagesForMem0 = filterSystemMessages(chatMemory.messages);
 
+    if (messagesForMem0.length === 0) {
+      console.warn('No valid messages to save to memory');
+      return false;
+    }
+
+    console.log(`[Memory] Saving ${messagesForMem0.length} messages for user: ${chatMemory.userId}`);
+
     // Always save new messages directly - this creates a memory entry
-    await mem0.add(messagesForMem0, {
+    const result = await mem0.add(messagesForMem0, {
       user_id: chatMemory.userId,
       metadata: {
         type: 'shared_user_memory',
@@ -56,22 +68,38 @@ export async function saveChatMemory(chatMemory: ChatMemory): Promise<boolean> {
       }
     });
     
+    console.log('[Memory] Successfully saved to mem0:', result);
     return true;
   } catch (error) {
-    console.error('Error saving chat memory:', error);
+    console.error('[Memory] Error saving chat memory:', error);
+    if (error instanceof Error) {
+      console.error('[Memory] Error details:', error.message, error.stack);
+    }
     return false;
   }
 }
 
 export async function getSharedUserMemory(userId: string): Promise<ChatMemory | null> {
   try {
+    if (!process.env.MEM0_API_KEY) {
+      console.warn('MEM0_API_KEY not configured, skipping memory retrieval');
+      return null;
+    }
+
+    console.log(`[Memory] Retrieving memories for user: ${userId}`);
+
     // Get all memories for this user
     const allMemories = await mem0.getAll({
       user_id: userId,
       limit: 100 // Adjust limit as needed
     }) as unknown as MemoryResult[];
     
-    if (!Array.isArray(allMemories) || allMemories.length === 0) return null;
+    console.log(`[Memory] Retrieved ${allMemories?.length || 0} memory entries`);
+    
+    if (!Array.isArray(allMemories) || allMemories.length === 0) {
+      console.log('[Memory] No memories found for user');
+      return null;
+    }
     
     // Collect all messages from shared memories
     const allMessages: ChatMessage[] = [];
